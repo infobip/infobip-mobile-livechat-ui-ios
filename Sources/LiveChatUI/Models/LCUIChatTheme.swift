@@ -30,7 +30,7 @@ public struct LCUIChatTheme: Equatable, Sendable {
         sendButtonBackgroundColor: Color = .black,
         sendButtonTintColor: Color = .white,
         composerContentOverlap: CGFloat = 30,
-        navigationBarContentOverlap: CGFloat = 11, // minimum value for a visible effect
+        navigationBarContentOverlap: CGFloat = 11, // 11 is the minimum value for a visible effect
         bannerFont: Font = .subheadline,
         bannerBackgroundColor: Color
     ) {

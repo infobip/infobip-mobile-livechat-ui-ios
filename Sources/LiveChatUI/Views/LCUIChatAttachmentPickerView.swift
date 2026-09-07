@@ -22,13 +22,10 @@ public struct LCUIChatAttachmentPickerView: View {
 
     private enum AttachmentOptions { case camera, gallery, documents }
 
-    // Rows are a fixed, known height rather than measured at runtime: on iOS 16-18,
-    // `presentationDetents` driven by a GeometryReader-measured height is unreliable (the sheet can
-    // settle on a stale/incorrect size instead of following the measurement). A small, fixed set of
-    // rows like this doesn't need runtime measurement, so we compute the exact height instead.
     private static let rowHeight: CGFloat = 52
     private static let dividerHeight: CGFloat = 1
     private static let glassRowSpacing: CGFloat = 8
+    private static let topPadding: CGFloat = 6
 
     private var rowCount: Int {
         settings.constraints.isCameraNeededForAllowedContentTypes ? 3 : 2
@@ -46,7 +43,7 @@ public struct LCUIChatAttachmentPickerView: View {
     }
 
     private var contentHeight: CGFloat {
-        CGFloat(rowCount) * Self.rowHeight + CGFloat(rowCount - 1) * rowSpacing
+        Self.topPadding + CGFloat(rowCount) * Self.rowHeight + CGFloat(rowCount - 1) * rowSpacing
     }
 
     private func attachmentLabel(for option: AttachmentOptions) -> some View {
@@ -137,6 +134,7 @@ public struct LCUIChatAttachmentPickerView: View {
             }
             .buttonStyle(.plain)
         }
+        .padding(.top, Self.topPadding)
         .foregroundStyle(settings.theme.primaryColor)
         .tint(settings.theme.primaryColor)
         .background(containerBackground)
@@ -147,6 +145,7 @@ public struct LCUIChatAttachmentPickerView: View {
                 onPick(LCUIChatAttachment(fileName: fileName, data: data, kind: kind))
                 dismiss()
             }
+            .ignoresSafeArea()
         }
         .fileImporter(isPresented: $showsDocumentImporter, allowedContentTypes: settings.constraints.allowedMimeTypes) { result in
             if case .success(let url) = result, let data = try? Data(contentsOf: url) {
@@ -184,6 +183,8 @@ struct LCUIChatCameraCaptureView: UIViewControllerRepresentable {
         picker.sourceType = .camera
         picker.mediaTypes = UIImagePickerController.availableMediaTypes(for: .camera) ?? ["public.image"]
         picker.delegate = context.coordinator
+        picker.modalPresentationStyle = .fullScreen
+        picker.view.backgroundColor = .black
         return picker
     }
 
