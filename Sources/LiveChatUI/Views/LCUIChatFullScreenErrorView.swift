@@ -14,36 +14,36 @@ public struct LCUIChatFullScreenErrorView: View {
     @Environment(\.lcuiChatSettings) private var settings
 
     private let error: LCUIChatError
-    private let onRetry: () -> Void
 
-    public init(error: LCUIChatError, onRetry: @escaping () -> Void = {}) {
+    public init(error: LCUIChatError) {
         self.error = error
-        self.onRetry = onRetry
     }
 
     public var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.bubble")
-                .font(.system(size: 48))
-                .foregroundStyle(settings.theme.secondaryColor)
+            ZStack {
+                let alertColor = settings.theme.bannerBackgroundColor
+                Circle()
+                    .fill(alertColor.opacity(0.1))
+                    .frame(width: 72, height: 72)
+                settings.icons.fullScreenErrorIcon
+                    .font(.system(size: 32))
+                    .foregroundStyle(alertColor)
+            }
 
             if let title = error.title {
                 title
-                    .font(.headline)
+                    .font(.title2.bold())
                     .foregroundStyle(settings.theme.primaryColor)
                     .multilineTextAlignment(.center)
             }
 
             if let subtitle = error.subtitle {
                 subtitle
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundStyle(settings.theme.secondaryColor)
                     .multilineTextAlignment(.center)
             }
-
-            Button("Retry", action: onRetry)
-                .foregroundStyle(settings.theme.primaryColor)
-                .padding(.top, 8)
         }
         .padding(.horizontal, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

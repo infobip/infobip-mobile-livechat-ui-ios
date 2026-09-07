@@ -27,7 +27,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
     @FocusState private var isFocused: Bool
 
     private let buttonSize: CGFloat = 44
-    private let sendIconSize: CGFloat = 16
+    private let sendIconSize: CGFloat = 18
     private let attachmentIconSize: CGFloat = 24
 
     public init(
@@ -93,7 +93,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
                             .resizable()
                             .scaledToFit()
                             .frame(width: sendIconSize, height: sendIconSize)
-                            .foregroundStyle(isSendEnabled ? settings.theme.resolvedSendButtonTintColor : settings.theme.resolvedSendButtonTintColorDisabled)
+                            .foregroundStyle(isSendEnabled ? settings.theme.sendButtonTintColor : settings.theme.sendButtonTintColorDisabled)
                             .frame(width: buttonSize, height: buttonSize)
                             .background(sendButtonBackground)
                             .clipShape(Circle())
@@ -146,12 +146,12 @@ public struct LCUIChatComposerView: LCUIChatComposing {
             Circle()
                 .fill(.clear)
                 .glassEffect(
-                    .regular.tint(isSendEnabled ? settings.theme.resolvedSendButtonBackgroundColor : settings.theme.resolvedSendButtonBackgroundColorDisabled),
+                    .regular.tint(isSendEnabled ? settings.theme.sendButtonBackgroundColor : settings.theme.sendButtonBackgroundColorDisabled),
                     in: Circle()
                 )
         } else {
             Circle()
-                .fill(isSendEnabled ? settings.theme.resolvedSendButtonBackgroundColor : settings.theme.resolvedSendButtonBackgroundColorDisabled)
+                .fill(isSendEnabled ? settings.theme.sendButtonBackgroundColor : settings.theme.sendButtonBackgroundColorDisabled)
         }
     }
 

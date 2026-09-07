@@ -17,10 +17,20 @@ public struct LCUIChatAttachmentPreview: View {
 
     private let attachment: LCUIChatPreviewAttachment
     private let onShare: (URL) -> Void
+    // Presented as a sheet over LCUIChatScreenView, so its own banner overlay would be hidden behind us — this view needs one of its own, fed from the same source of truth as the parent screen's
+    private let bannerMessage: Text?
+    private let onBannerTapped: () -> Void
 
-    public init(attachment: LCUIChatPreviewAttachment, onShare: @escaping (URL) -> Void = { _ in }) {
+    public init(
+        attachment: LCUIChatPreviewAttachment,
+        onShare: @escaping (URL) -> Void = { _ in },
+        bannerMessage: Text? = nil,
+        onBannerTapped: @escaping () -> Void = {}
+    ) {
         self.attachment = attachment
         self.onShare = onShare
+        self.bannerMessage = bannerMessage
+        self.onBannerTapped = onBannerTapped
     }
 
     public var body: some View {
@@ -49,6 +59,14 @@ public struct LCUIChatAttachmentPreview: View {
                         .tint(settings.theme.primaryColor)
                     }
                 }
+                .overlay(alignment: .bottom) {
+                    if let bannerMessage {
+                        LCUIChatErrorBannerView(message: bannerMessage, onTapped: onBannerTapped)
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 8)
+                    }
+                }
+                .animation(.default, value: bannerMessage != nil)
         }
     }
 
@@ -111,6 +129,16 @@ struct LCUIChatQuickLookView: UIViewControllerRepresentable {
 #Preview {
     LCUIChatAttachmentPreview(
         attachment: LCUIChatPreviewAttachment(fileName: "photo.jpg", kind: .image, sourceURL: URL(string: "https://example.com/photo.jpg")!)
+    )
+    .lcuiChatSettings(.init())
+}
+
+@available(iOS 16, *)
+#Preview("With banner") {
+    LCUIChatAttachmentPreview(
+        attachment: LCUIChatPreviewAttachment(fileName: "photo.jpg", kind: .image, sourceURL: URL(string: "https://example.com/photo.jpg")!),
+        bannerMessage: Text("No connection"),
+        onBannerTapped: { print("Banner tapped") }
     )
     .lcuiChatSettings(.init())
 }

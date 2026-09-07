@@ -17,10 +17,10 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
     private let showsComposer: Bool
     private let error: LCUIChatError?
     private let bannerMessage: Text?
+    private let onBannerTapped: () -> Void
     private let onSend: (String) -> Void
     private let onAttachmentTapped: () -> Void
     private let onTextChange: (String) -> Void
-    private let onRetry: () -> Void
     private let embedsNavigationStack: Bool
     private let showsCustomBackButton: Bool
     private let onBackButtonTapped: () -> Void
@@ -32,10 +32,10 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
         showsComposer: Bool = true,
         error: LCUIChatError? = nil,
         bannerMessage: Text? = nil,
+        onBannerTapped: @escaping () -> Void = {},
         onSend: @escaping (String) -> Void,
         onAttachmentTapped: @escaping () -> Void = {},
         onTextChange: @escaping (String) -> Void = { _ in },
-        onRetry: @escaping () -> Void = {},
         embedsNavigationStack: Bool = true,
         showsCustomBackButton: Bool = false,
         onBackButtonTapped: @escaping () -> Void = {},
@@ -46,10 +46,10 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
         self.showsComposer = showsComposer
         self.error = error
         self.bannerMessage = bannerMessage
+        self.onBannerTapped = onBannerTapped
         self.onSend = onSend
         self.onAttachmentTapped = onAttachmentTapped
         self.onTextChange = onTextChange
-        self.onRetry = onRetry
         self.embedsNavigationStack = embedsNavigationStack
         self.showsCustomBackButton = showsCustomBackButton
         self.onBackButtonTapped = onBackButtonTapped
@@ -102,7 +102,7 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
         VStack(spacing: 0) {
             ZStack {
                 if let error {
-                    LCUIChatFullScreenErrorView(error: error, onRetry: onRetry)
+                    LCUIChatFullScreenErrorView(error: error)
                 } else {
                     webContent()
                 }
@@ -114,7 +114,7 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
             .overlay(alignment: .bottom) {
                 // Overlaid, not stacked, so a transient banner never reflows the widget
                 if error == nil, let bannerMessage {
-                    LCUIChatErrorBannerView(message: bannerMessage)
+                    LCUIChatErrorBannerView(message: bannerMessage, onTapped: onBannerTapped)
                         .padding(.horizontal, 12)
                         .padding(.bottom, 8)
                 }
@@ -157,10 +157,10 @@ public extension LCUIChatScreenView where Composer == LCUIChatComposerView {
         showsComposer: Bool = true,
         error: LCUIChatError? = nil,
         bannerMessage: Text? = nil,
+        onBannerTapped: @escaping () -> Void = {},
         onSend: @escaping (String) -> Void,
         onAttachmentTapped: @escaping () -> Void = {},
         onTextChange: @escaping (String) -> Void = { _ in },
-        onRetry: @escaping () -> Void = {},
         embedsNavigationStack: Bool = true,
         showsCustomBackButton: Bool = false,
         onBackButtonTapped: @escaping () -> Void = {},
@@ -172,10 +172,10 @@ public extension LCUIChatScreenView where Composer == LCUIChatComposerView {
             showsComposer: showsComposer,
             error: error,
             bannerMessage: bannerMessage,
+            onBannerTapped: onBannerTapped,
             onSend: onSend,
             onAttachmentTapped: onAttachmentTapped,
             onTextChange: onTextChange,
-            onRetry: onRetry,
             embedsNavigationStack: embedsNavigationStack,
             showsCustomBackButton: showsCustomBackButton,
             onBackButtonTapped: onBackButtonTapped,
@@ -209,6 +209,7 @@ public extension LCUIChatScreenView where Composer == LCUIChatComposerView {
 #Preview("Banner") {
     LCUIChatScreenView(
         bannerMessage: Text("No connection"),
+        onBannerTapped: { print("Banner tapped") },
         onSend: { _ in }
     ) {
         Text("Web content placeholder")

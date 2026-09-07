@@ -13,12 +13,12 @@ public struct LCUIChatTheme: Equatable, Sendable {
     public private(set) var secondaryColor: Color
     public private(set) var backgroundColor: Color
     public private(set) var prefersLiquidGlass: Bool // value ignored below iOS 26
-    public private(set) var sendButtonBackgroundColor: Color?
-    public private(set) var sendButtonTintColor: Color?
+    public private(set) var sendButtonBackgroundColor: Color
+    public private(set) var sendButtonTintColor: Color
     public private(set) var composerContentOverlap: CGFloat  // Overlap of the webview under the composer, used for the liquid glass effect
     public private(set) var navigationBarContentOverlap: CGFloat // Overlap of the webview under the nav bar, used for the liquid glass effect
     public private(set) var bannerFont: Font
-    public private(set) var bannerBackgroundColor: Color?
+    public private(set) var bannerBackgroundColor: Color
 
     private static let disabledAlpha: Double = 0.35
 
@@ -27,8 +27,8 @@ public struct LCUIChatTheme: Equatable, Sendable {
         secondaryColor: Color,
         backgroundColor: Color,
         prefersLiquidGlass: Bool = true,
-        sendButtonBackgroundColor: Color? = nil,
-        sendButtonTintColor: Color? = nil,
+        sendButtonBackgroundColor: Color = .black,
+        sendButtonTintColor: Color = .white,
         composerContentOverlap: CGFloat = 30,
         navigationBarContentOverlap: CGFloat = 11, // minimum value for a visible effect
         bannerFont: Font = .subheadline,
@@ -49,16 +49,14 @@ public struct LCUIChatTheme: Equatable, Sendable {
     public var primaryColorDisabled: Color { primaryColor.opacity(Self.disabledAlpha) }
     public var secondaryColorDisabled: Color { secondaryColor.opacity(Self.disabledAlpha) }
 
-    public var resolvedSendButtonBackgroundColor: Color { sendButtonBackgroundColor ?? primaryColor }
-    public var resolvedSendButtonTintColor: Color { sendButtonTintColor ?? .white }
-    public var resolvedSendButtonBackgroundColorDisabled: Color { resolvedSendButtonBackgroundColor.opacity(Self.disabledAlpha) }
-    public var resolvedSendButtonTintColorDisabled: Color { resolvedSendButtonTintColor.opacity(Self.disabledAlpha) }
+    public var sendButtonTintColorDisabled: Color { sendButtonTintColor.opacity(Self.disabledAlpha) }
+    public var sendButtonBackgroundColorDisabled: Color { sendButtonTintColorDisabled.opacity(Self.disabledAlpha) }
 
     public static let `default` = LCUIChatTheme(
         primaryColor: .black,
         secondaryColor: .black.opacity(0.5),
         backgroundColor: Color(.systemBackground),
-        bannerBackgroundColor: Color.red
+        bannerBackgroundColor: Color(red: 0.702, green: 0.149, blue: 0.118) // #B3261E
     )
 }
 
