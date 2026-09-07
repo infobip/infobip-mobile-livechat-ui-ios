@@ -31,14 +31,15 @@ public struct LCUIChatIcons: Sendable {
         sendButton: Image = Image(systemName: "paperplane.fill"),
         fullScreenErrorIcon: Image = Image(systemName: "exclamationmark.circle")
        ) {
-           self.attachmentsCamera = attachmentsCamera
-           self.attachmentsGallery = attachmentsGallery
-           self.attachmentsDocuments = attachmentsDocuments
-           self.attachmentSharing = attachmentSharing
-           self.closingNavigation = closingNavigation
-           self.backNavigation = backNavigation
-           self.addAttachmentButton = addAttachmentButton
-           self.sendButton = sendButton
-           self.fullScreenErrorIcon = fullScreenErrorIcon
+           // Forced to rendering mode `.template` in order to be able to tint so supplied icons (ie SVG/PDF), even though default SF Symbols do not need it (they are alwayas in `.template` mode).
+           self.attachmentsCamera = attachmentsCamera.renderingMode(.template)
+           self.attachmentsGallery = attachmentsGallery.renderingMode(.template)
+           self.attachmentsDocuments = attachmentsDocuments.renderingMode(.template)
+           self.attachmentSharing = attachmentSharing.renderingMode(.template)
+           self.closingNavigation = closingNavigation.renderingMode(.template)
+           self.backNavigation = backNavigation.renderingMode(.template)
+           self.addAttachmentButton = addAttachmentButton.renderingMode(.template)
+           self.sendButton = sendButton.renderingMode(.template)
+           self.fullScreenErrorIcon = fullScreenErrorIcon.renderingMode(.template)
     }
 }

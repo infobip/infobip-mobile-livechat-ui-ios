@@ -28,13 +28,25 @@ public struct LCUIChatAttachmentPickerView: View {
     // rows like this doesn't need runtime measurement, so we compute the exact height instead.
     private static let rowHeight: CGFloat = 52
     private static let dividerHeight: CGFloat = 1
+    private static let glassRowSpacing: CGFloat = 8
 
     private var rowCount: Int {
         settings.constraints.isCameraNeededForAllowedContentTypes ? 3 : 2
     }
 
+    private var usesLiquidGlassChrome: Bool {
+        if #available(iOS 26, *) {
+            return settings.theme.prefersLiquidGlass
+        }
+        return false
+    }
+
+    private var rowSpacing: CGFloat {
+        usesLiquidGlassChrome ? Self.glassRowSpacing : Self.dividerHeight
+    }
+
     private var contentHeight: CGFloat {
-        CGFloat(rowCount) * Self.rowHeight + CGFloat(rowCount - 1) * Self.dividerHeight
+        CGFloat(rowCount) * Self.rowHeight + CGFloat(rowCount - 1) * rowSpacing
     }
 
     private func attachmentLabel(for option: AttachmentOptions) -> some View {
@@ -67,6 +79,26 @@ public struct LCUIChatAttachmentPickerView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: Self.rowHeight)
             .contentShape(Rectangle())
+            .background(rowBackground)
+            .padding(.horizontal, usesLiquidGlassChrome ? 8 : 0)
+    }
+
+    @ViewBuilder
+    private var rowBackground: some View {
+        if #available(iOS 26, *), settings.theme.prefersLiquidGlass {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.clear)
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+    }
+
+    @ViewBuilder
+    private var containerBackground: some View {
+        if usesLiquidGlassChrome {
+            Color.clear
+        } else {
+            settings.theme.backgroundColor
+        }
     }
 
     public init(
@@ -76,7 +108,7 @@ public struct LCUIChatAttachmentPickerView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: usesLiquidGlassChrome ? Self.glassRowSpacing : 0) {
             if settings.constraints.isCameraNeededForAllowedContentTypes {
                 Button {
                     showsCamera = true
@@ -84,7 +116,9 @@ public struct LCUIChatAttachmentPickerView: View {
                     attachmentRow(for: .camera)
                 }
                 .buttonStyle(.plain)
-                Divider()
+                if !usesLiquidGlassChrome {
+                    Divider()
+                }
             }
 
             PhotosPicker(selection: $photosPickerItem, matching: .any(of: [.images, .videos])) {
@@ -92,7 +126,9 @@ public struct LCUIChatAttachmentPickerView: View {
             }
             .buttonStyle(.plain)
 
-            Divider()
+            if !usesLiquidGlassChrome {
+                Divider()
+            }
 
             Button {
                 showsDocumentImporter = true
@@ -103,7 +139,7 @@ public struct LCUIChatAttachmentPickerView: View {
         }
         .foregroundStyle(settings.theme.primaryColor)
         .tint(settings.theme.primaryColor)
-        .background(settings.theme.backgroundColor)
+        .background(containerBackground)
         .presentationDetents([.height(contentHeight)])
         .presentationDragIndicator(.visible)
         .fullScreenCover(isPresented: $showsCamera) {

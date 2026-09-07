@@ -27,8 +27,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
     @FocusState private var isFocused: Bool
 
     private let buttonSize: CGFloat = 44
-    private let sendIconSize: CGFloat = 18
-    private let attachmentIconSize: CGFloat = 24
+    private let buttonIconSize: CGFloat = 20
 
     public init(
         isEnabled: Bool = true,
@@ -77,7 +76,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
                             settings.icons.addAttachmentButton
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: attachmentIconSize, height: attachmentIconSize)
+                                .frame(width: buttonIconSize, height: buttonIconSize)
                                 .foregroundStyle(isEnabled ? settings.theme.secondaryColor : settings.theme.secondaryColorDisabled)
                                 .frame(width: buttonSize, height: buttonSize)
                                 .background(Circle().fill(.clear))
@@ -92,7 +91,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
                         settings.icons.sendButton
                             .resizable()
                             .scaledToFit()
-                            .frame(width: sendIconSize, height: sendIconSize)
+                            .frame(width: buttonIconSize, height: buttonIconSize)
                             .foregroundStyle(isSendEnabled ? settings.theme.sendButtonTintColor : settings.theme.sendButtonTintColorDisabled)
                             .frame(width: buttonSize, height: buttonSize)
                             .background(sendButtonBackground)
