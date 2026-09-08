@@ -35,21 +35,15 @@ public struct LCUIChatTheme: Equatable, Sendable {
         public private(set) var prefersLiquidGlass: Bool // value ignored below iOS 26
         public private(set) var composerContentOverlap: CGFloat  // Overlap of the webview under the composer, used for the liquid glass effect
         public private(set) var navigationBarContentOverlap: CGFloat // Overlap of the webview under the nav bar, used for the liquid glass effect
-        public private(set) var webContentTopSpace: CGFloat // Blank strip above the chat transcript, applied as CSS padding inside the web content. Note that with liquid glass the webview already reaches `navigationBarContentOverlap` above the nav bar's bottom edge, so the strip visible below the bar is this value minus that overlap
-        public private(set) var webContentBottomSpace: CGFloat // Blank strip below the chat transcript, applied as CSS padding inside the web content
 
         public init(
             prefersLiquidGlass: Bool = true,
-            composerContentOverlap: CGFloat = 45,
-            navigationBarContentOverlap: CGFloat = 90,
-            webContentTopSpace: CGFloat = 70,
-            webContentBottomSpace: CGFloat = 15
+            composerContentOverlap: CGFloat = 30,
+            navigationBarContentOverlap: CGFloat = 11
         ) {
             self.prefersLiquidGlass = prefersLiquidGlass
             self.composerContentOverlap = composerContentOverlap
             self.navigationBarContentOverlap = navigationBarContentOverlap
-            self.webContentTopSpace = webContentTopSpace
-            self.webContentBottomSpace = webContentBottomSpace
         }
     }
 
