@@ -16,6 +16,11 @@ public struct LCUIChatAttachmentPreview: View {
     @Environment(\.dismiss) private var dismiss
 
     private var colors: LCUIChatTheme.Colors { settings.theme.colors }
+    private var attTexts: LCUIChatTexts.Attachments { settings.texts.attachments }
+    private var errorTexts: LCUIChatTexts.Errors { settings.texts.errors }
+    
+
+    @State private var player: AVPlayer? // Created once and reused: building it inline in `body` made a new player on every re-evaluation and may leak decoder resources.
 
     private let attachment: LCUIChatPreviewAttachment
     private let onShare: (URL) -> Void
@@ -49,6 +54,7 @@ public struct LCUIChatAttachmentPreview: View {
                             settings.icons.attachments.sharing
                         }
                         .tint(colors.primary)
+                        .accessibilityLabel(attTexts.share)
                     }
                     ToolbarItem(placement: .topBarLeading) {
                         Button {
@@ -59,6 +65,7 @@ public struct LCUIChatAttachmentPreview: View {
                                 .font(.headline)
                         }
                         .tint(colors.primary)
+                        .accessibilityLabel(settings.texts.back)
                     }
                 }
                 .overlay(alignment: .bottom) {
@@ -84,7 +91,7 @@ public struct LCUIChatAttachmentPreview: View {
                     LCUIChatFullScreenErrorView(
                         error:
                         LCUIChatError(
-                            title: settings.texts.errors.defaultError,
+                            title: errorTexts.defaultError,
                             subtitle: nil)
                     )
                 default:
@@ -92,7 +99,13 @@ public struct LCUIChatAttachmentPreview: View {
                 }
             }
         case .video:
-            VideoPlayer(player: AVPlayer(url: attachment.sourceURL))
+            VideoPlayer(player: player)
+                .onAppear {
+                    if player == nil {
+                        player = AVPlayer(url: attachment.sourceURL)
+                    }
+                }
+                .onDisappear { player?.pause() }
         case .document:
             LCUIChatQuickLookView(url: attachment.sourceURL)
         }

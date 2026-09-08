@@ -7,44 +7,86 @@
 //
 
 import SwiftUI
-import Photos
+import PhotosUI
+import UniformTypeIdentifiers
 
 public struct LCUIChatConstraints: Sendable {
-    public private(set) var charCounterVisibleForLength: UInt
+    public private(set) var maximumCharacterCount: UInt
     public private(set) var charCounterVisibleThreshold: UInt
-    public private(set) var allowedContentTypes: [String]
+    public private(set) var allowedContentTypes: [UTType]
     public private(set) var isAttachmentUploadEnabled: Bool
-    
-    public init (
-        charCounterVisibleForLength: UInt = 1024*4, // above 4096, char counter becomes red
-        charCounterVisibleThreshold: UInt = 4000, // above 4000, char counter becomes visible as light gray
-        allowedContentTypes: [String] = ["mp4", "jpeg", "jpg"],
-        isAttachmentUploadEnabled: Bool = true
-       ) {
-           self.charCounterVisibleForLength = charCounterVisibleForLength
-           self.charCounterVisibleThreshold = charCounterVisibleThreshold
-           self.allowedContentTypes = allowedContentTypes
-           self.isAttachmentUploadEnabled = isAttachmentUploadEnabled
-    }
-    
-    public var isCameraNeededForAllowedContentTypes: Bool {
-        let videoExtensions: Set<String> = ["mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "mpeg", "mpg", "m4v", "3gp", "ogv", "ts", "vob", "rm", "rmvb", "divx", "asf", "m2ts", "srt"]
+    public private(set) var maximumAttachmentByteCount: Int
 
-        let imageExtensions: Set<String> = ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "tif", "webp", "svg", "ico", "heic", "heif", "raw", "cr2", "nef", "arw", "dng", "psd"]
+    public static let defaultMaximumAttachmentByteCount = 25 * 1024 * 1024
 
-        let allowedVideoTypes = Set(allowedContentTypes).intersection(videoExtensions)
-        let alloweImagesTypes =  Set(allowedContentTypes).intersection(imageExtensions)
-        return !(allowedVideoTypes.isEmpty && alloweImagesTypes.isEmpty)
+    public init(
+        maximumCharacterCount: UInt = 1024 * 4,
+        charCounterVisibleThreshold: UInt = 4000,
+        allowedContentTypes: [UTType] = [.jpeg, .mpeg4Movie],
+        isAttachmentUploadEnabled: Bool = true,
+        maximumAttachmentByteCount: Int = LCUIChatConstraints.defaultMaximumAttachmentByteCount
+    ) {
+        self.maximumCharacterCount = maximumCharacterCount
+        self.charCounterVisibleThreshold = charCounterVisibleThreshold
+        self.allowedContentTypes = allowedContentTypes
+        self.isAttachmentUploadEnabled = isAttachmentUploadEnabled
+        self.maximumAttachmentByteCount = maximumAttachmentByteCount
     }
-    
-    public var allowedMimeTypes: [UTType] {
-        var contentTypes: [UTType] = []
-        for typeExtension in allowedContentTypes {
-            if let uType = UTType(filenameExtension: typeExtension) {
-                contentTypes.append(uType)
+
+    public init(
+        maximumCharacterCount: UInt = 1024 * 4,
+        charCounterVisibleThreshold: UInt = 4000,
+        allowedFileExtensions: [String],
+        isAttachmentUploadEnabled: Bool = true,
+        maximumAttachmentByteCount: Int = LCUIChatConstraints.defaultMaximumAttachmentByteCount
+    ) {
+        var resolved: [UTType] = []
+        var unresolved: [String] = []
+        for fileExtension in allowedFileExtensions {
+            if let type = UTType(filenameExtension: fileExtension), type.isDeclared {
+                resolved.append(type)
+            } else {
+                unresolved.append(fileExtension)
             }
         }
-        return contentTypes
+        if !unresolved.isEmpty {
+            LCUIChatAttachmentStore.logger.warning(
+                "Ignoring unrecognised allowed file extensions: \(unresolved.joined(separator: ", "), privacy: .public)"
+            )
+        }
+        self.init(
+            maximumCharacterCount: maximumCharacterCount,
+            charCounterVisibleThreshold: charCounterVisibleThreshold,
+            allowedContentTypes: resolved,
+            isAttachmentUploadEnabled: isAttachmentUploadEnabled,
+            maximumAttachmentByteCount: maximumAttachmentByteCount
+        )
     }
 
+    private var isUnrestricted: Bool { allowedContentTypes.isEmpty }
+
+    public var allowsImageContent: Bool {
+        isUnrestricted || allowedContentTypes.contains { $0.conforms(to: .image) }
+    }
+
+    public var allowsVideoContent: Bool {
+        isUnrestricted || allowedContentTypes.contains { $0.conforms(to: .movie) || $0.conforms(to: .video) }
+    }
+
+    public var allowsCameraCapture: Bool {
+        allowsImageContent || allowsVideoContent
+    }
+
+    public var photoLibraryFilter: PHPickerFilter? {
+        switch (allowsImageContent, allowsVideoContent) {
+        case (true, true): return .any(of: [.images, .videos])
+        case (true, false): return .images
+        case (false, true): return .videos
+        case (false, false): return nil
+        }
+    }
+
+    public var documentPickerContentTypes: [UTType] {
+        isUnrestricted ? [.item] : allowedContentTypes
+    }
 }

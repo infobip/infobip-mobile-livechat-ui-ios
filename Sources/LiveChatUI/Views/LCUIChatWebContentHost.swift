@@ -10,12 +10,8 @@ import SwiftUI
 import UIKit
 import WebKit
 
-public protocol ChatWebViewControlling: UIView {}
-
-extension UIView: ChatWebViewControlling {}
-
 @available(iOS 16, *)
-public struct LCUIChatWebContentHost<WebView: ChatWebViewControlling>: UIViewRepresentable {
+public struct LCUIChatWebContentHost<WebView: UIView>: UIViewRepresentable {
     private let webView: WebView
     private let usesLiquidGlassChrome: Bool
 

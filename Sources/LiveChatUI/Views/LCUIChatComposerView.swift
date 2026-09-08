@@ -17,32 +17,40 @@ public struct LCUIChatComposerView: LCUIChatComposing {
     private var layout: LCUIChatTheme.Layout { theme.layout }
     private var icons: LCUIChatIcons { settings.icons }
     private var constraints: LCUIChatConstraints { settings.constraints }
+    private var attTexts: LCUIChatTexts.Attachments { settings.texts.attachments }
 
     private let isEnabled: Bool
+    private let externalText: Binding<String>?
     private let onSend: (String) -> Void
     private let onAttachmentTapped: () -> Void
     private let onTextChange: (String) -> Void
-    private var maxCharacterCount: UInt {
-        constraints.charCounterVisibleForLength
+    private var maximumCharacterCount: UInt {
+        constraints.maximumCharacterCount
     }
     private var charCounterVisibleThreshold: UInt {
         constraints.charCounterVisibleThreshold
     }
 
-    @State private var text: String = ""
+    @State private var internalText: String = ""
     @FocusState private var isFocused: Bool
+
+    /// The host's binding when it supplied one, otherwise the composer's own state.
+    private var text: Binding<String> {
+        externalText ?? $internalText
+    }
 
     private let buttonSize: CGFloat = 44
     private let buttonIconSize: CGFloat = 20
 
     public init(
         isEnabled: Bool = true,
-        showsAttachmentButton: Bool = true,
+        text: Binding<String>? = nil,
         onSend: @escaping (String) -> Void,
         onAttachmentTapped: @escaping () -> Void = {},
         onTextChange: @escaping (String) -> Void = { _ in }
     ) {
         self.isEnabled = isEnabled
+        self.externalText = text
         self.onSend = onSend
         self.onAttachmentTapped = onAttachmentTapped
         self.onTextChange = onTextChange
@@ -51,6 +59,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
     public init(configuration: LCUIChatComposerConfiguration) {
         self.init(
             isEnabled: configuration.isEnabled,
+            text: configuration.text,
             onSend: configuration.onSend,
             onAttachmentTapped: configuration.onAttachmentTapped,
             onTextChange: configuration.onTextChange
@@ -58,21 +67,23 @@ public struct LCUIChatComposerView: LCUIChatComposing {
     }
 
     private var isSendEnabled: Bool {
-        isEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && text.count <= maxCharacterCount
+        isEnabled
+            && !text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !isOverLimit
     }
-    private var isOverLimit: Bool { text.count > maxCharacterCount }
+    private var isOverLimit: Bool { text.wrappedValue.count > maximumCharacterCount }
 
     public var body: some View {
         ZStack(alignment: .topTrailing) {
             VStack(alignment: .leading, spacing: 6) {
-                TextField(settings.texts.sendAMessage, text: $text, axis: .vertical)
+                TextField(settings.texts.sendAMessage, text: text, axis: .vertical)
                     .lineLimit(1...4) // After 4 lines, text will just start scrolling
                     .focused($isFocused)
                     .disabled(!isEnabled)
                     .foregroundStyle(colors.primary)
                     .tint(colors.primary)
                     .padding(.horizontal, 4)
-                    .onChange(of: text) { newValue in
+                    .onChange(of: text.wrappedValue) { newValue in
                         onTextChange(newValue)
                     }
 
@@ -89,6 +100,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
                                 .clipShape(Circle())
                         }
                         .disabled(!isEnabled)
+                        .accessibilityLabel(attTexts.attachments)
                     }
 
                     Spacer()
@@ -104,6 +116,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
                             .clipShape(Circle())
                     }
                     .disabled(!isSendEnabled)
+                    .accessibilityLabel(settings.texts.sendAMessage)
                 }
             }
             .padding(.horizontal, 10)
@@ -111,8 +124,8 @@ public struct LCUIChatComposerView: LCUIChatComposing {
             .background(composerContainerBackground)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 
-            if text.count >= charCounterVisibleThreshold {
-                Text("\(text.count)/\(maxCharacterCount)")
+            if text.wrappedValue.count >= charCounterVisibleThreshold {
+                Text("\(text.wrappedValue.count)/\(maximumCharacterCount)")
                     .font(.caption2)
                     .foregroundStyle(isOverLimit ? Color.red : colors.secondary)
                     .padding(.top, 6)
@@ -162,8 +175,11 @@ public struct LCUIChatComposerView: LCUIChatComposing {
 
     private func submit() {
         guard isSendEnabled else { return }
-        onSend(text)
-        text = ""
+        onSend(text.wrappedValue)
+        // Hosts that own the text via a binding decide themselves when to clear it, so a failed end can keep the draft rather than losing what the user typed.
+        if externalText == nil {
+            internalText = ""
+        }
     }
 }
 

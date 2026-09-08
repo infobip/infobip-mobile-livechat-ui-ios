@@ -8,7 +8,7 @@ experiences on iOS.
   DESC
 
   s.homepage         = 'https://git.ib-ci.com/scm/cma/infobip-mobile-livechat-ui-ios.git'
-  s.license          = { :type => 'MIT' }
+  s.license          = { :type => 'Apache-2.0', :file => 'LICENSE' }
   s.author           = { 'Francisco Fortes' => 'francisco.fortes@infobip.com' }
   s.source           = { :git => 'https://git.ib-ci.com/scm/cma/infobip-mobile-livechat-ui-ios.git', :tag => s.version.to_s }
 

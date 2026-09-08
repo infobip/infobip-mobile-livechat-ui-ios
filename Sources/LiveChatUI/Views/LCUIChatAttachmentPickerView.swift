@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import AVFoundation
 import PhotosUI
 import UIKit
 import UniformTypeIdentifiers
@@ -15,25 +16,52 @@ import UniformTypeIdentifiers
 public struct LCUIChatAttachmentPickerView: View {
     @Environment(\.lcuiChatSettings) private var settings
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+
     @State private var photosPickerItem: PhotosPickerItem?
+    @State private var pendingSource: LCUIChatPendingAttachmentSource?
     @State private var showsCamera = false
     @State private var showsDocumentImporter = false
+    @State private var showsPermissionAlert = false
+    @State private var isStaging = false
+
     private let onPick: (LCUIChatAttachment) -> Void
+    private let onError: (LCUIChatAttachmentError) -> Void
+
+    private static let importer = LCUIChatAttachmentImporter()
 
     private var layout: LCUIChatTheme.Layout { settings.theme.layout }
     private var colors: LCUIChatTheme.Colors { settings.theme.colors }
+    private var constraints: LCUIChatConstraints { settings.constraints }
     private var attachmentIcons: LCUIChatIcons.Attachments { settings.icons.attachments }
     private var attachmentTexts: LCUIChatTexts.Attachments { settings.texts.attachments }
 
-    private enum AttachmentOptions { case camera, gallery, documents }
+    @ScaledMetric private var rowHeight: CGFloat = 52
+    @ScaledMetric private var topPadding: CGFloat = 20
 
-    private static let rowHeight: CGFloat = 52
     private static let dividerHeight: CGFloat = 1
     private static let glassRowSpacing: CGFloat = 8
-    private static let topPadding: CGFloat = 20
 
-    private var rowCount: Int {
-        settings.constraints.isCameraNeededForAllowedContentTypes ? 3 : 2
+    public init(
+        onPick: @escaping (LCUIChatAttachment) -> Void,
+        onError: @escaping (LCUIChatAttachmentError) -> Void = { _ in }
+    ) {
+        self.onPick = onPick
+        self.onError = onError
+    }
+
+    // MARK: - Row availability
+
+    private var isCameraRowVisible: Bool {
+        constraints.allowsCameraCapture && UIImagePickerController.isSourceTypeAvailable(.camera)
+    }
+
+    private var isGalleryRowVisible: Bool {
+        constraints.photoLibraryFilter != nil
+    }
+
+    private var visibleRowCount: Int {
+        1 + (isCameraRowVisible ? 1 : 0) + (isGalleryRowVisible ? 1 : 0)
     }
 
     private var usesLiquidGlassChrome: Bool {
@@ -48,49 +76,121 @@ public struct LCUIChatAttachmentPickerView: View {
     }
 
     private var contentHeight: CGFloat {
-        Self.topPadding + CGFloat(rowCount) * Self.rowHeight + CGFloat(rowCount - 1) * rowSpacing
+        topPadding
+            + CGFloat(visibleRowCount) * rowHeight
+            + CGFloat(max(0, visibleRowCount - 1)) * rowSpacing
     }
 
-    private func attachmentLabel(for option: AttachmentOptions) -> some View {
-        var title: Text = Text("")
-        var icon: Image = .init(systemName: "")
-        switch option {
-            case .camera:
-            title = attachmentTexts.takePhotoOrVideo
-            icon = attachmentIcons.camera
-        case .gallery:
-            title = attachmentTexts.photoLibrary
-            icon = attachmentIcons.gallery
-        case .documents:
-            title = attachmentTexts.browse
-            icon = attachmentIcons.documents
+    private var cameraMediaTypes: [String] {
+        let available = UIImagePickerController.availableMediaTypes(for: .camera) ?? [UTType.image.identifier]
+        let permitted = available.filter { identifier in
+            guard let type = UTType(identifier) else { return false }
+            if type.conforms(to: .movie) || type.conforms(to: .video) {
+                return constraints.allowsVideoContent
+            }
+            if type.conforms(to: .image) {
+                return constraints.allowsImageContent
+            }
+            return false
         }
-        return Label {
-                title
-            } icon: {
-                icon
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
+        return permitted.isEmpty ? [UTType.image.identifier] : permitted
+    }
+
+    // MARK: - Body
+
+    public var body: some View {
+        let texts = attachmentTexts
+        let icons = attachmentIcons
+        let style = AttachmentRow.Style(height: rowHeight, usesLiquidGlassChrome: usesLiquidGlassChrome)
+
+        return VStack(spacing: usesLiquidGlassChrome ? Self.glassRowSpacing : 0) {
+            if isCameraRowVisible {
+                Button(action: handleCameraTap) {
+                    AttachmentRow(title: texts.takePhotoOrVideo, icon: icons.camera, style: style)
+                }
+                .buttonStyle(.plain)
+                if !usesLiquidGlassChrome {
+                    Divider()
+                }
+            }
+
+            if let filter = constraints.photoLibraryFilter {
+                PhotosPicker(selection: $photosPickerItem, matching: filter) {
+                    AttachmentRow(title: texts.photoLibrary, icon: icons.gallery, style: style)
+                }
+                .buttonStyle(.plain)
+
+                if !usesLiquidGlassChrome {
+                    Divider()
+                }
+            }
+
+            Button {
+                showsDocumentImporter = true
+            } label: {
+                AttachmentRow(title: texts.browse, icon: icons.documents, style: style)
+            }
+            .buttonStyle(.plain)
         }
-    }
-
-    private func attachmentRow(for option: AttachmentOptions) -> some View {
-        attachmentLabel(for: option)
-            .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: Self.rowHeight)
-            .contentShape(Rectangle())
-            .background(rowBackground)
-            .padding(.horizontal, usesLiquidGlassChrome ? 8 : 0)
-    }
-
-    @ViewBuilder
-    private var rowBackground: some View {
-        if #available(iOS 26, *), layout.prefersLiquidGlass {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.clear)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(.top, topPadding)
+        .foregroundStyle(colors.primary)
+        .tint(colors.primary)
+        .background(containerBackground)
+        .presentationDetents([.height(contentHeight), .large])
+        .presentationDragIndicator(.visible)
+        .disabled(isStaging)
+        .overlay {
+            if isStaging {
+                stagingOverlay
+            }
+        }
+        .fullScreenCover(isPresented: $showsCamera) {
+            LCUIChatCameraCaptureView(
+                mediaTypes: cameraMediaTypes,
+                onCapture: { capture in
+                    // SwiftUI owns this cover, so flipping the binding is the only correct way to
+                    // dismiss it. Calling `dismiss(animated:)` on the picker tore the view out
+                    // from under SwiftUI and left `showsCamera` stuck at `true`.
+                    showsCamera = false
+                    pendingSource = LCUIChatPendingAttachmentSource(capture)
+                },
+                onCancel: { showsCamera = false }
+            )
+            .ignoresSafeArea()
+        }
+        .fileImporter(
+            isPresented: $showsDocumentImporter,
+            allowedContentTypes: constraints.documentPickerContentTypes
+        ) { result in
+            switch result {
+            case .success(let url):
+                pendingSource = LCUIChatPendingAttachmentSource(origin: .securityScopedFile(url))
+            case .failure(let error):
+                LCUIChatAttachmentStore.logger.error(
+                    "Document import failed: \(error.localizedDescription, privacy: .public)"
+                )
+                onError(.unreadable)
+                dismiss()
+            }
+        }
+        .alert(attachmentTexts.toGivePermission, isPresented: $showsPermissionAlert) {
+            Button(role: .cancel) { } label: { settings.texts.cancel }
+            Button {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    openURL(url)
+                }
+            } label: {
+                attachmentTexts.goToSettings
+            }
+        }
+        // `.task(id:)` rather than a bare `Task {}`: SwiftUI cancels it when the identity changes
+        // or the sheet goes away, so a half-finished copy cannot outlive the view and call back
+        // into a torn-down hierarchy.
+        .task(id: photosPickerItem) {
+            await handlePhotosPickerItem()
+        }
+        .task(id: pendingSource) {
+            await handlePendingSource()
         }
     }
 
@@ -103,134 +203,241 @@ public struct LCUIChatAttachmentPickerView: View {
         }
     }
 
-    public init(
-        onPick: @escaping (LCUIChatAttachment) -> Void
-    ) {
-        self.onPick = onPick
+    private var stagingOverlay: some View {
+        ZStack {
+            colors.background.opacity(0.6)
+            ProgressView().tint(colors.primary)
+        }
+        .ignoresSafeArea()
     }
 
-    public var body: some View {
-        VStack(spacing: usesLiquidGlassChrome ? Self.glassRowSpacing : 0) {
-            if settings.constraints.isCameraNeededForAllowedContentTypes {
-                Button {
-                    showsCamera = true
-                } label: {
-                    attachmentRow(for: .camera)
-                }
-                .buttonStyle(.plain)
-                if !usesLiquidGlassChrome {
-                    Divider()
-                }
-            }
+    // MARK: - Picking
 
-            PhotosPicker(selection: $photosPickerItem, matching: .any(of: [.images, .videos])) {
-                attachmentRow(for: .gallery)
-            }
-            .buttonStyle(.plain)
-
-            if !usesLiquidGlassChrome {
-                Divider()
-            }
-
-            Button {
-                showsDocumentImporter = true
-            } label: {
-                attachmentRow(for: .documents)
-            }
-            .buttonStyle(.plain)
+    private func handleCameraTap() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .denied, .restricted:
+            // `.notDetermined` deliberately falls through: UIImagePickerController raises the
+            // system prompt itself, so intercepting it here would ask twice.
+            showsPermissionAlert = true
+        default:
+            showsCamera = true
         }
-        .padding(.top, Self.topPadding)
-        .foregroundStyle(colors.primary)
-        .tint(colors.primary)
-        .background(containerBackground)
-        .presentationDetents([.height(contentHeight)])
-        .presentationDragIndicator(.visible)
-        .fullScreenCover(isPresented: $showsCamera) {
-            LCUIChatCameraCaptureView { fileName, data, kind in
-                onPick(LCUIChatAttachment(fileName: fileName, data: data, kind: kind))
-                dismiss()
+    }
+
+    private func handlePhotosPickerItem() async {
+        guard let item = photosPickerItem else { return }
+        await stage {
+            guard let transferred = try await item.loadTransferable(type: LCUIChatTransferredFile.self) else {
+                throw LCUIChatAttachmentError.unreadable
             }
-            .ignoresSafeArea()
+            return try await Self.importer.adopt(
+                stagedFile: transferred.url,
+                preferredFileName: nil,
+                maximumByteCount: constraints.maximumAttachmentByteCount
+            )
         }
-        .fileImporter(isPresented: $showsDocumentImporter, allowedContentTypes: settings.constraints.allowedMimeTypes) { result in
-            if case .success(let url) = result, let data = try? Data(contentsOf: url) {
-                onPick(LCUIChatAttachment(
-                    fileName: url.lastPathComponent,
-                    data: data,
-                    kind: .document)
+        photosPickerItem = nil
+    }
+
+    private func handlePendingSource() async {
+        guard let pendingSource else { return }
+        await stage {
+            switch pendingSource.origin {
+            case .securityScopedFile(let url):
+                return try await Self.importer.stage(
+                    source: url,
+                    isSecurityScoped: true,
+                    allowedContentTypes: constraints.allowedContentTypes,
+                    maximumByteCount: constraints.maximumAttachmentByteCount
+                )
+            case .cameraVideo(let url):
+                return try await Self.importer.stage(
+                    source: url,
+                    isSecurityScoped: false,
+                    allowedContentTypes: constraints.allowedContentTypes,
+                    maximumByteCount: constraints.maximumAttachmentByteCount
+                )
+            case .cameraPhoto(let image):
+                return try await Self.importer.stage(
+                    photo: image,
+                    maximumByteCount: constraints.maximumAttachmentByteCount
                 )
             }
-            dismiss()
         }
-        .onChange(of: photosPickerItem) { newItem in
-            guard let newItem else { return }
-            Task {
-                if let data = try? await newItem.loadTransferable(type: Data.self) {
-                    onPick(LCUIChatAttachment(
-                        fileName: nil,
-                        data: data,
-                        kind: .image)
-                    )
-                }
-                dismiss()
+        self.pendingSource = nil
+    }
+
+    /// Runs a staging operation, reports its outcome to the host, and dismisses — except when the
+    /// task was cancelled, which means the sheet is already going away.
+    private func stage(_ operation: () async throws -> LCUIChatAttachment) async {
+        isStaging = true
+        defer { isStaging = false }
+        do {
+            let attachment = try await operation()
+            guard !Task.isCancelled else {
+                attachment.discard()
+                return
             }
+            onPick(attachment)
+        } catch is CancellationError {
+            return
+        } catch let error as LCUIChatAttachmentError {
+            onError(error)
+        } catch {
+            LCUIChatAttachmentStore.logger.error(
+                "Attachment staging failed: \(error.localizedDescription, privacy: .public)"
+            )
+            onError(.unreadable)
+        }
+        dismiss()
+    }
+}
+
+// MARK: - Pending source
+
+/// Wraps a picked source with a fresh identity, so `.task(id:)` re-fires even when the same file is
+/// chosen twice — and never has to compare `UIImage` payloads to decide whether the id changed.
+private struct LCUIChatPendingAttachmentSource: Equatable, Identifiable {
+    enum Origin {
+        case securityScopedFile(URL)
+        case cameraVideo(URL)
+        case cameraPhoto(UIImage)
+    }
+
+    let id = UUID()
+    let origin: Origin
+
+    init(origin: Origin) {
+        self.origin = origin
+    }
+
+    @available(iOS 16, *)
+    init(_ capture: LCUIChatCameraCaptureView.Capture) {
+        switch capture {
+        case .video(let url):
+            self.init(origin: .cameraVideo(url))
+        case .photo(let image):
+            self.init(origin: .cameraPhoto(image))
+        }
+    }
+
+    static func == (lhs: LCUIChatPendingAttachmentSource, rhs: LCUIChatPendingAttachmentSource) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+// MARK: - Row
+
+/// A standalone view rather than a method on the picker: `PhotosPicker`'s label builder is a`Sendable` closure
+@available(iOS 16, *)
+private struct AttachmentRow: View {
+    /// Sendable, so the row can be configured from inside `PhotosPicker`'s label closure.
+    struct Style: Sendable {
+        let height: CGFloat
+        let usesLiquidGlassChrome: Bool
+    }
+
+    let title: Text
+    let icon: Image
+    let style: Style
+
+    private static let iconSize: CGFloat = 24
+    private static let cornerRadius: CGFloat = 14
+
+    nonisolated init(title: Text, icon: Image, style: Style) {
+        self.title = title
+        self.icon = icon
+        self.style = style
+    }
+
+    var body: some View {
+        Label {
+            title
+        } icon: {
+            icon
+                .resizable()
+                .scaledToFit()
+                .frame(width: Self.iconSize, height: Self.iconSize)
+        }
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: style.height)
+        .contentShape(Rectangle())
+        .background(background)
+        .padding(.horizontal, style.usesLiquidGlassChrome ? 8 : 0)
+    }
+
+    @ViewBuilder
+    private var background: some View {
+        if #available(iOS 26, *), style.usesLiquidGlassChrome {
+            RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
+                .fill(.clear)
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
         }
     }
 }
 
+// MARK: - Camera
+
 /// Note: this can be skipped for a native solution once the min target is iOS 17.
 @available(iOS 16, *)
 struct LCUIChatCameraCaptureView: UIViewControllerRepresentable {
-    let onCapture: (String?, Data, LCUIChatAttachmentKind) -> Void
+    let mediaTypes: [String]
+    let onCapture: (Capture) -> Void
+    let onCancel: () -> Void
+
+    enum Capture {
+        case video(URL)
+        /// Stills arrive as an image, not a file — there is no URL to copy.
+        case photo(UIImage)
+    }
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.sourceType = .camera
-        picker.mediaTypes = UIImagePickerController.availableMediaTypes(for: .camera) ?? ["public.image"]
+        picker.mediaTypes = mediaTypes
         picker.delegate = context.coordinator
         picker.modalPresentationStyle = .fullScreen
         picker.view.backgroundColor = .black
         return picker
     }
 
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {
+        context.coordinator.onCapture = onCapture
+        context.coordinator.onCancel = onCancel
+    }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onCapture: onCapture)
+        Coordinator(onCapture: onCapture, onCancel: onCancel)
     }
 
     final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let onCapture: (String?, Data, LCUIChatAttachmentKind) -> Void
+        var onCapture: (Capture) -> Void
+        var onCancel: () -> Void
 
-        init(onCapture: @escaping (String?, Data, LCUIChatAttachmentKind) -> Void) {
+        init(onCapture: @escaping (Capture) -> Void, onCancel: @escaping () -> Void) {
             self.onCapture = onCapture
+            self.onCancel = onCancel
         }
 
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            picker.dismiss(animated: true)
-            if let videoURL = info[.mediaURL] as? URL, let data = try? Data(contentsOf: videoURL) {
-                onCapture(videoURL.chatCaptureFilename, data, .video)
-            } else if let image = info[.originalImage] as? UIImage, let data = image.jpegData(compressionQuality: 1) {
-                onCapture(nil, data, .image)
+        // Neither callback dismisses the picker itself: SwiftUI presented it via
+        // `.fullScreenCover` and owns its lifetime.
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+        ) {
+            if let videoURL = info[.mediaURL] as? URL {
+                onCapture(.video(videoURL))
+            } else if let image = info[.originalImage] as? UIImage {
+                onCapture(.photo(image))
+            } else {
+                onCancel()
             }
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            picker.dismiss(animated: true)
+            onCancel()
         }
-    }
-}
-
-extension URL {
-    var chatCaptureFilename: String? {
-        let fullFilename = lastPathComponent
-        let components = fullFilename.components(separatedBy: ".")
-        guard let fileExtension = components.count > 1 ? components.last : nil, !fileExtension.isEmpty else {
-            return fullFilename
-        }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-        return formatter.string(from: Date()) + ".\(fileExtension)"
     }
 }
 
@@ -238,4 +445,16 @@ extension URL {
 #Preview {
     LCUIChatAttachmentPickerView(onPick: { _ in })
         .lcuiChatSettings(.init())
+}
+
+@available(iOS 16, *)
+#Preview("Images only") {
+    LCUIChatAttachmentPickerView(onPick: { _ in }, onError: { print("error: \($0)") })
+        .lcuiChatSettings(.init(constraints: .init(allowedContentTypes: [.jpeg, .png])))
+}
+
+@available(iOS 16, *)
+#Preview("Documents only — no camera or gallery row") {
+    LCUIChatAttachmentPickerView(onPick: { _ in })
+        .lcuiChatSettings(.init(constraints: .init(allowedContentTypes: [.pdf])))
 }

@@ -84,9 +84,10 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(showsCustomBackButton)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    if showsCustomBackButton {
+                if showsCustomBackButton {
+                    ToolbarItem(placement: .navigationBarLeading) {
                         Button(action: onBackButtonTapped) { settings.icons.navigation.back }
+                            .accessibilityLabel(settings.texts.back)
                     }
                 }
             }
