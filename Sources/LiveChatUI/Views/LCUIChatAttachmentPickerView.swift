@@ -30,7 +30,7 @@ public struct LCUIChatAttachmentPickerView: View {
     private static let rowHeight: CGFloat = 52
     private static let dividerHeight: CGFloat = 1
     private static let glassRowSpacing: CGFloat = 8
-    private static let topPadding: CGFloat = 6
+    private static let topPadding: CGFloat = 20
 
     private var rowCount: Int {
         settings.constraints.isCameraNeededForAllowedContentTypes ? 3 : 2
