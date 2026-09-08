@@ -116,7 +116,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
                             .clipShape(Circle())
                     }
                     .disabled(!isSendEnabled)
-                    .accessibilityLabel(settings.texts.sendAMessage)
+                    .accessibilityLabel(settings.texts.send)
                 }
             }
             .padding(.horizontal, 10)

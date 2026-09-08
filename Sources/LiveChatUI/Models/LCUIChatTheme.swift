@@ -38,7 +38,7 @@ public struct LCUIChatTheme: Equatable, Sendable {
 
         public init(
             prefersLiquidGlass: Bool = true,
-            composerContentOverlap: CGFloat = 30,
+            composerContentOverlap: CGFloat = 10, // 30 for the optimal result, but only if no auto message btn exists
             navigationBarContentOverlap: CGFloat = 11
         ) {
             self.prefersLiquidGlass = prefersLiquidGlass

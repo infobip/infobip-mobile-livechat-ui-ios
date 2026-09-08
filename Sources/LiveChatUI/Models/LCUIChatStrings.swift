@@ -68,6 +68,7 @@ public struct LCUIChatTexts: Sendable {
     public private(set) var sendAMessage: String // Used as placeholer in a textfield, cannot be Text
     public private(set) var cancel: Text
     public private(set) var back: Text
+    public private(set) var send: Text
 
     public init (
         attachments: Attachments = Attachments(),
@@ -75,7 +76,8 @@ public struct LCUIChatTexts: Sendable {
         navigationTitle: Text = Text("Chat"),
         sendAMessage: String = "Send a message...",
         cancel: Text = Text("Cancel"),
-        back: Text = Text("Back")
+        back: Text = Text("Back"),
+        send: Text = Text("Send")
     ) {
             self.attachments = attachments
             self.errors = errors
@@ -83,5 +85,6 @@ public struct LCUIChatTexts: Sendable {
             self.sendAMessage = sendAMessage
             self.cancel = cancel
             self.back = back
+            self.send = send
     }
 }
