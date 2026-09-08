@@ -12,6 +12,8 @@ import SwiftUI
 public struct LCUIChatErrorBannerView: View {
     @Environment(\.lcuiChatSettings) private var settings
 
+    private var banner: LCUIChatTheme.Banner { settings.theme.banner }
+
     private let message: Text
     private let onTapped: () -> Void
 
@@ -22,14 +24,14 @@ public struct LCUIChatErrorBannerView: View {
 
     public var body: some View {
         message
-            .font(settings.theme.bannerFont)
-            .foregroundStyle(settings.theme.primaryColor)
+            .font(banner.font)
+            .foregroundStyle(settings.theme.colors.primary)
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(settings.theme.bannerBackgroundColor)
+            .background(banner.backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .contentShape(Rectangle())
             .onTapGesture(perform: onTapped)

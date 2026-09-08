@@ -12,6 +12,9 @@ import SwiftUI
 public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>: View {
     @Environment(\.lcuiChatSettings) private var settings
 
+    private var colors: LCUIChatTheme.Colors { settings.theme.colors }
+    private var layout: LCUIChatTheme.Layout { settings.theme.layout }
+
     private let composerType: Composer.Type
     private let isComposerEnabled: Bool
     private let showsComposer: Bool
@@ -65,12 +68,12 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
                 navigationBar
             }
         }
-        .tint(settings.theme.primaryColor)
+        .tint(colors.primary)
     }
 
     private var usesLiquidGlassChrome: Bool {
         if #available(iOS 26, *) {
-            return settings.theme.prefersLiquidGlass
+            return layout.prefersLiquidGlass
         }
         return false
     }
@@ -83,7 +86,7 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     if showsCustomBackButton {
-                        Button(action: onBackButtonTapped) { settings.icons.backNavigation }
+                        Button(action: onBackButtonTapped) { settings.icons.navigation.back }
                     }
                 }
             }
@@ -92,7 +95,7 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
                 navBarContent // system's will provide liquid glass effect
             } else {
                 navBarContent
-                    .toolbarBackground(settings.theme.backgroundColor, for: .navigationBar)
+                    .toolbarBackground(colors.background, for: .navigationBar)
                     .toolbarBackground(.visible, for: .navigationBar)
             }
         }
@@ -133,19 +136,19 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
             }
         }
         // Behind the whole stack, as the chat content no longer reaches the bottom of the screen
-        .background(settings.theme.backgroundColor.ignoresSafeArea())
+        .background(colors.background.ignoresSafeArea())
     }
 
     private var composerOverlap: CGFloat {
         guard showsComposer, error == nil else { return 0 }
-        return settings.theme.composerContentOverlap
+        return layout.composerContentOverlap
     }
 
     // How far the chat content reaches above the bottom of the navigation bar. Left at zero without liquid
     // glass, where the bar is opaque and anything underneath it would only be hidden
     private var navigationBarOverlap: CGFloat {
         guard usesLiquidGlassChrome, error == nil else { return 0 }
-        return settings.theme.navigationBarContentOverlap
+        return layout.navigationBarContentOverlap
     }
 }
 

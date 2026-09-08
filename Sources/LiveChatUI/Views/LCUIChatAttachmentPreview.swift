@@ -15,6 +15,8 @@ public struct LCUIChatAttachmentPreview: View {
     @Environment(\.lcuiChatSettings) private var settings
     @Environment(\.dismiss) private var dismiss
 
+    private var colors: LCUIChatTheme.Colors { settings.theme.colors }
+
     private let attachment: LCUIChatPreviewAttachment
     private let onShare: (URL) -> Void
     // Presented as a sheet over LCUIChatScreenView, so its own banner overlay would be hidden behind us — this view needs one of its own, fed from the same source of truth as the parent screen's
@@ -36,7 +38,7 @@ public struct LCUIChatAttachmentPreview: View {
     public var body: some View {
         NavigationStack {
             content
-                .background(settings.theme.backgroundColor)
+                .background(colors.background)
                 .navigationTitle(attachment.fileName ?? "")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -44,19 +46,19 @@ public struct LCUIChatAttachmentPreview: View {
                         Button {
                             onShare(attachment.sourceURL)
                         } label: {
-                            settings.icons.attachmentSharing
+                            settings.icons.attachments.sharing
                         }
-                        .tint(settings.theme.primaryColor)
+                        .tint(colors.primary)
                     }
                     ToolbarItem(placement: .topBarLeading) {
                         Button {
                             dismiss()
                         } label: {
-                            settings.icons.closingNavigation
+                            settings.icons.navigation.closing
                                 .imageScale(.medium)
                                 .font(.headline)
                         }
-                        .tint(settings.theme.primaryColor)
+                        .tint(colors.primary)
                     }
                 }
                 .overlay(alignment: .bottom) {
@@ -82,11 +84,11 @@ public struct LCUIChatAttachmentPreview: View {
                     LCUIChatFullScreenErrorView(
                         error:
                         LCUIChatError(
-                            title: settings.texts.defaultError,
+                            title: settings.texts.errors.defaultError,
                             subtitle: nil)
                     )
                 default:
-                    ProgressView().tint(settings.theme.primaryColor)
+                    ProgressView().tint(colors.primary)
                 }
             }
         case .video:

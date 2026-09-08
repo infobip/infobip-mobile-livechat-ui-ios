@@ -13,6 +13,8 @@ import SwiftUI
 public struct LCUIChatFullScreenErrorView: View {
     @Environment(\.lcuiChatSettings) private var settings
 
+    private var colors: LCUIChatTheme.Colors { settings.theme.colors }
+
     private let error: LCUIChatError
 
     public init(error: LCUIChatError) {
@@ -22,7 +24,7 @@ public struct LCUIChatFullScreenErrorView: View {
     public var body: some View {
         VStack(spacing: 12) {
             ZStack {
-                let alertColor = settings.theme.bannerBackgroundColor
+                let alertColor = settings.theme.banner.backgroundColor
                 Circle()
                     .fill(alertColor.opacity(0.1))
                     .frame(width: 72, height: 72)
@@ -34,20 +36,20 @@ public struct LCUIChatFullScreenErrorView: View {
             if let title = error.title {
                 title
                     .font(.title2.bold())
-                    .foregroundStyle(settings.theme.primaryColor)
+                    .foregroundStyle(colors.primary)
                     .multilineTextAlignment(.center)
             }
 
             if let subtitle = error.subtitle {
                 subtitle
                     .font(.body)
-                    .foregroundStyle(settings.theme.secondaryColor)
+                    .foregroundStyle(colors.secondary)
                     .multilineTextAlignment(.center)
             }
         }
         .padding(.horizontal, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(settings.theme.backgroundColor)
+        .background(colors.background)
     }
 }
 

@@ -12,15 +12,21 @@ import SwiftUI
 public struct LCUIChatComposerView: LCUIChatComposing {
     @Environment(\.lcuiChatSettings) private var settings
 
+    private var theme: LCUIChatTheme { settings.theme }
+    private var colors: LCUIChatTheme.Colors { theme.colors }
+    private var layout: LCUIChatTheme.Layout { theme.layout }
+    private var icons: LCUIChatIcons { settings.icons }
+    private var constraints: LCUIChatConstraints { settings.constraints }
+
     private let isEnabled: Bool
     private let onSend: (String) -> Void
     private let onAttachmentTapped: () -> Void
     private let onTextChange: (String) -> Void
     private var maxCharacterCount: UInt {
-        settings.constraints.charCounterVisibleForLength
+        constraints.charCounterVisibleForLength
     }
     private var charCounterVisibleThreshold: UInt {
-        settings.constraints.charCounterVisibleThreshold
+        constraints.charCounterVisibleThreshold
     }
 
     @State private var text: String = ""
@@ -63,21 +69,21 @@ public struct LCUIChatComposerView: LCUIChatComposing {
                     .lineLimit(1...4) // After 4 lines, text will just start scrolling
                     .focused($isFocused)
                     .disabled(!isEnabled)
-                    .foregroundStyle(settings.theme.primaryColor)
-                    .tint(settings.theme.primaryColor)
+                    .foregroundStyle(colors.primary)
+                    .tint(colors.primary)
                     .padding(.horizontal, 4)
                     .onChange(of: text) { newValue in
                         onTextChange(newValue)
                     }
 
                 HStack(alignment: .bottom, spacing: 8) {
-                    if settings.constraints.isAttachmentUploadEnabled {
+                    if constraints.isAttachmentUploadEnabled {
                         Button(action: onAttachmentTapped) {
-                            settings.icons.addAttachmentButton
+                            icons.attachments.addButton
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: buttonIconSize, height: buttonIconSize)
-                                .foregroundStyle(isEnabled ? settings.theme.secondaryColor : settings.theme.secondaryColorDisabled)
+                                .foregroundStyle(isEnabled ? colors.secondary : theme.secondaryColorDisabled)
                                 .frame(width: buttonSize, height: buttonSize)
                                 .background(Circle().fill(.clear))
                                 .clipShape(Circle())
@@ -88,11 +94,11 @@ public struct LCUIChatComposerView: LCUIChatComposing {
                     Spacer()
 
                     Button(action: submit) {
-                        settings.icons.sendButton
+                        icons.sendButton
                             .resizable()
                             .scaledToFit()
                             .frame(width: buttonIconSize, height: buttonIconSize)
-                            .foregroundStyle(isSendEnabled ? settings.theme.sendButtonTintColor : settings.theme.sendButtonTintColorDisabled)
+                            .foregroundStyle(isSendEnabled ? colors.sendButtonTint : theme.sendButtonTintColorDisabled)
                             .frame(width: buttonSize, height: buttonSize)
                             .background(sendButtonBackground)
                             .clipShape(Circle())
@@ -108,7 +114,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
             if text.count >= charCounterVisibleThreshold {
                 Text("\(text.count)/\(maxCharacterCount)")
                     .font(.caption2)
-                    .foregroundStyle(isOverLimit ? Color.red : settings.theme.secondaryColor)
+                    .foregroundStyle(isOverLimit ? Color.red : colors.secondary)
                     .padding(.top, 6)
                     .padding(.trailing, 12)
             }
@@ -120,37 +126,37 @@ public struct LCUIChatComposerView: LCUIChatComposing {
 
     @ViewBuilder
     private var outerBackground: some View {
-        if #available(iOS 26, *), settings.theme.prefersLiquidGlass {
+        if #available(iOS 26, *), layout.prefersLiquidGlass {
             Color.clear
         } else {
-            settings.theme.backgroundColor
+            colors.background
         }
     }
 
     @ViewBuilder
     private var composerContainerBackground: some View {
-        if #available(iOS 26, *), settings.theme.prefersLiquidGlass {
+        if #available(iOS 26, *), layout.prefersLiquidGlass {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(.clear)
                 .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         } else {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(settings.theme.secondaryColor.opacity(0.12))
+                .fill(colors.secondary.opacity(0.12))
         }
     }
 
     @ViewBuilder
     private var sendButtonBackground: some View {
-        if #available(iOS 26, *), settings.theme.prefersLiquidGlass {
+        if #available(iOS 26, *), layout.prefersLiquidGlass {
             Circle()
                 .fill(.clear)
                 .glassEffect(
-                    .regular.tint(isSendEnabled ? settings.theme.sendButtonBackgroundColor : settings.theme.sendButtonBackgroundColorDisabled),
+                    .regular.tint(isSendEnabled ? colors.sendButtonBackground : theme.sendButtonBackgroundColorDisabled),
                     in: Circle()
                 )
         } else {
             Circle()
-                .fill(isSendEnabled ? settings.theme.sendButtonBackgroundColor : settings.theme.sendButtonBackgroundColorDisabled)
+                .fill(isSendEnabled ? colors.sendButtonBackground : theme.sendButtonBackgroundColorDisabled)
         }
     }
 

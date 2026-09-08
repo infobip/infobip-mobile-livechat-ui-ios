@@ -20,6 +20,11 @@ public struct LCUIChatAttachmentPickerView: View {
     @State private var showsDocumentImporter = false
     private let onPick: (LCUIChatAttachment) -> Void
 
+    private var layout: LCUIChatTheme.Layout { settings.theme.layout }
+    private var colors: LCUIChatTheme.Colors { settings.theme.colors }
+    private var attachmentIcons: LCUIChatIcons.Attachments { settings.icons.attachments }
+    private var attachmentTexts: LCUIChatTexts.Attachments { settings.texts.attachments }
+
     private enum AttachmentOptions { case camera, gallery, documents }
 
     private static let rowHeight: CGFloat = 52
@@ -33,7 +38,7 @@ public struct LCUIChatAttachmentPickerView: View {
 
     private var usesLiquidGlassChrome: Bool {
         if #available(iOS 26, *) {
-            return settings.theme.prefersLiquidGlass
+            return layout.prefersLiquidGlass
         }
         return false
     }
@@ -51,14 +56,14 @@ public struct LCUIChatAttachmentPickerView: View {
         var icon: Image = .init(systemName: "")
         switch option {
             case .camera:
-            title = settings.texts.takePhotoOrVideo
-            icon = settings.icons.attachmentsCamera
+            title = attachmentTexts.takePhotoOrVideo
+            icon = attachmentIcons.camera
         case .gallery:
-            title = settings.texts.photoLibrary
-            icon = settings.icons.attachmentsGallery
+            title = attachmentTexts.photoLibrary
+            icon = attachmentIcons.gallery
         case .documents:
-            title = settings.texts.browse
-            icon = settings.icons.attachmentsDocuments
+            title = attachmentTexts.browse
+            icon = attachmentIcons.documents
         }
         return Label {
                 title
@@ -82,7 +87,7 @@ public struct LCUIChatAttachmentPickerView: View {
 
     @ViewBuilder
     private var rowBackground: some View {
-        if #available(iOS 26, *), settings.theme.prefersLiquidGlass {
+        if #available(iOS 26, *), layout.prefersLiquidGlass {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(.clear)
                 .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -94,7 +99,7 @@ public struct LCUIChatAttachmentPickerView: View {
         if usesLiquidGlassChrome {
             Color.clear
         } else {
-            settings.theme.backgroundColor
+            colors.background
         }
     }
 
@@ -135,8 +140,8 @@ public struct LCUIChatAttachmentPickerView: View {
             .buttonStyle(.plain)
         }
         .padding(.top, Self.topPadding)
-        .foregroundStyle(settings.theme.primaryColor)
-        .tint(settings.theme.primaryColor)
+        .foregroundStyle(colors.primary)
+        .tint(colors.primary)
         .background(containerBackground)
         .presentationDetents([.height(contentHeight)])
         .presentationDragIndicator(.visible)
