@@ -69,6 +69,17 @@ final class LCUIChatConstraintsTests: XCTestCase {
         XCTAssertFalse(constraints.allowedContentTypes.contains { !$0.isDeclared })
     }
 
+    /// A restrictive default would make the picker convert media the widget never rejected, before
+    /// its real policy has even arrived.
+    func testDefaultConfigurationIsUnrestricted() {
+        XCTAssertTrue(LCUIChatConstraints().allowedContentTypes.isEmpty)
+    }
+
+    func testFileExtensionInitNormalisesCasingAndLeadingDots() {
+        let constraints = LCUIChatConstraints(allowedFileExtensions: ["MOV", ".mp4", " jpg "])
+        XCTAssertEqual(constraints.allowedContentTypes, [.quickTimeMovie, .mpeg4Movie, .jpeg])
+    }
+
     func testCharacterLimitDefaults() {
         let constraints = LCUIChatConstraints()
         XCTAssertEqual(constraints.maximumCharacterCount, 4096)

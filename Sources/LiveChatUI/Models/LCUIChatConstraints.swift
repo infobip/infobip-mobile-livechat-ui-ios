@@ -22,7 +22,7 @@ public struct LCUIChatConstraints: Sendable {
     public init(
         maximumCharacterCount: UInt = 1024 * 4,
         charCounterVisibleThreshold: UInt = 4000,
-        allowedContentTypes: [UTType] = [.jpeg, .mpeg4Movie],
+        allowedContentTypes: [UTType] = [],
         isAttachmentUploadEnabled: Bool = true,
         maximumAttachmentByteCount: Int = LCUIChatConstraints.defaultMaximumAttachmentByteCount
     ) {
@@ -43,16 +43,15 @@ public struct LCUIChatConstraints: Sendable {
         var resolved: [UTType] = []
         var unresolved: [String] = []
         for fileExtension in allowedFileExtensions {
-            if let type = UTType(filenameExtension: fileExtension), type.isDeclared {
+            let normalised = fileExtension
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "."))
+                .lowercased()
+            if let type = UTType(filenameExtension: normalised), type.isDeclared {
                 resolved.append(type)
             } else {
                 unresolved.append(fileExtension)
             }
-        }
-        if !unresolved.isEmpty {
-            LCUIChatAttachmentStore.logger.warning(
-                "Ignoring unrecognised allowed file extensions: \(unresolved.joined(separator: ", "), privacy: .public)"
-            )
         }
         self.init(
             maximumCharacterCount: maximumCharacterCount,

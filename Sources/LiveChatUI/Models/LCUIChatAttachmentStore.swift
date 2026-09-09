@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import AVFoundation
 import CoreTransferable
 import UIKit
 import UniformTypeIdentifiers
@@ -26,9 +27,9 @@ enum LCUIChatAttachmentStore {
     /// year, producing filenames that neither sort nor round-trip. Static, so it is built once.
     private static let timestampFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.locale = Locale.current
+        formatter.calendar = Calendar.current
+        formatter.timeZone = TimeZone.current
         formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
         return formatter
     }()
@@ -48,6 +49,18 @@ enum LCUIChatAttachmentStore {
     static func removeAll() {
         guard let url = try? directory() else { return }
         try? FileManager.default.removeItem(at: url)
+    }
+
+    /// Takes ownership of a file whose URL is about to become invalid.
+    /// `UIImagePickerController` hands its camera recording over as a temp file it deletes on dismissal.
+    static func claim(_ source: URL) throws -> URL {
+        let destination = try destination(fileName: source.lastPathComponent)
+        do {
+            try FileManager.default.moveItem(at: source, to: destination)
+        } catch {
+            try FileManager.default.copyItem(at: source, to: destination)
+        }
+        return destination
     }
 
     static func byteCount(of url: URL) -> Int? {
@@ -82,7 +95,7 @@ enum LCUIChatAttachmentStore {
         cleaned = cleaned.trimmingCharacters(in: CharacterSet(charactersIn: " ."))
 
         if cleaned.isEmpty {
-            let stem = "attachment-\(timestampFormatter.string(from: Date()))"
+            let stem = "\(timestampFormatter.string(from: Date()))"
             return fallbackExtension.map { "\(stem).\($0)" } ?? stem
         }
 
@@ -109,10 +122,6 @@ enum LCUIChatAttachmentStore {
 }
 
 /// Moves picked files into `LCUIChatAttachmentStore` off the main actor.
-///
-/// This is an `actor` rather than a set of `nonisolated` functions on purpose: it makes it
-/// impossible to accidentally perform the copy — or a JPEG encode — on the main thread, which is
-/// what the previous `Data(contentsOf:)` calls in the picker were doing.
 actor LCUIChatAttachmentImporter {
     /// Quality 1.0 produces ~8 MB for a 12 MP capture with no perceptible benefit over 0.9.
     private static let photoCompressionQuality: CGFloat = 0.9
@@ -128,7 +137,17 @@ actor LCUIChatAttachmentImporter {
         preferredFileName: String? = nil,
         allowedContentTypes: [UTType],
         maximumByteCount: Int
-    ) throws -> LCUIChatAttachment {
+    ) async throws -> LCUIChatAttachment {
+        let staged = try copyIntoStore(source: source, isSecurityScoped: isSecurityScoped, maximumByteCount: maximumByteCount)
+        return try await finish(
+            stagedFile: staged,
+            preferredFileName: preferredFileName ?? source.lastPathComponent,
+            allowedContentTypes: allowedContentTypes,
+            maximumByteCount: maximumByteCount
+        )
+    }
+
+    private func copyIntoStore(source: URL, isSecurityScoped: Bool, maximumByteCount: Int) throws -> URL {
         var didAccess = false
         if isSecurityScoped {
             // Returns false both for failure and for URLs that need no scoping, so its result only
@@ -141,9 +160,6 @@ actor LCUIChatAttachmentImporter {
             }
         }
 
-        let contentType = LCUIChatAttachmentStore.contentType(of: source)
-        try validate(contentType: contentType, against: allowedContentTypes)
-
         // Checked before the copy: rejecting a 500 MB video should not first duplicate it.
         guard let byteCount = LCUIChatAttachmentStore.byteCount(of: source) else {
             throw LCUIChatAttachmentError.unreadable
@@ -152,11 +168,7 @@ actor LCUIChatAttachmentImporter {
             throw LCUIChatAttachmentError.tooLarge(byteCount: byteCount, maximum: maximumByteCount)
         }
 
-        let fileName = LCUIChatAttachmentStore.sanitizedFileName(
-            preferredFileName ?? source.lastPathComponent,
-            contentType: contentType
-        )
-        let destination = try LCUIChatAttachmentStore.destination(fileName: fileName)
+        let destination = try LCUIChatAttachmentStore.destination(fileName: source.lastPathComponent)
         do {
             // Kernel-level copy: streams, so peak memory stays flat regardless of file size.
             try FileManager.default.copyItem(at: source, to: destination)
@@ -164,19 +176,10 @@ actor LCUIChatAttachmentImporter {
             LCUIChatAttachmentStore.logger.error("Failed to stage attachment: \(error.localizedDescription, privacy: .public)")
             throw LCUIChatAttachmentError.unreadable
         }
-
-        let resolvedType = contentType ?? .data
-        return LCUIChatAttachment(
-            fileName: fileName,
-            fileURL: destination,
-            byteCount: byteCount,
-            contentType: resolvedType,
-            kind: LCUIChatAttachmentKind(contentType: resolvedType)
-        )
+        return destination
     }
 
-    /// Encodes and writes a camera photo. `UIImagePickerController` yields a `UIImage` for stills —
-    /// there is no file URL to copy — so this is the one path that must serialise through memory.
+    /// Encodes and writes a camera photo (`UIImagePickerController` yields a `UIImage)` — there is no file URL to copy, yet
     func stage(photo: UIImage, maximumByteCount: Int) throws -> LCUIChatAttachment {
         guard let data = photo.jpegData(compressionQuality: Self.photoCompressionQuality) else {
             throw LCUIChatAttachmentError.unreadable
@@ -203,37 +206,93 @@ actor LCUIChatAttachmentImporter {
         )
     }
 
-    /// Validates a file already written into package storage by `LCUIChatTransferredFile`.
-    ///
-    /// `Transferable`'s `FileRepresentation` hands over a URL that is deleted as soon as the
-    /// importing closure returns, so the copy has to happen there — before the limit can be
-    /// applied. The check is therefore after the fact, and an oversized file is deleted here. The
-    /// cost is disk, never memory, which is the trade this whole type exists to make.
-    func adopt(
+    /// This method owns `stagedFile` and deletes it on every failure.
+    func finish(
         stagedFile: URL,
         preferredFileName: String?,
+        allowedContentTypes: [UTType],
         maximumByteCount: Int
-    ) throws -> LCUIChatAttachment {
-        let contentType = LCUIChatAttachmentStore.contentType(of: stagedFile) ?? .data
-        guard let byteCount = LCUIChatAttachmentStore.byteCount(of: stagedFile) else {
-            try? FileManager.default.removeItem(at: stagedFile)
+    ) async throws -> LCUIChatAttachment {
+        var fileURL = stagedFile
+        var contentType = LCUIChatAttachmentStore.contentType(of: fileURL)
+        var proposedName = preferredFileName
+
+        do {
+            if let remuxed = try await remuxedMovie(at: fileURL, contentType: contentType, allowedContentTypes: allowedContentTypes) {
+                try? FileManager.default.removeItem(at: fileURL)
+                fileURL = remuxed.url
+                contentType = remuxed.contentType
+                proposedName = proposedName.map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent }
+            } else {
+                try validate(contentType: contentType, against: allowedContentTypes)
+            }
+        } catch {
+            try? FileManager.default.removeItem(at: fileURL)
+            throw error
+        }
+
+        guard let byteCount = LCUIChatAttachmentStore.byteCount(of: fileURL) else {
+            try? FileManager.default.removeItem(at: fileURL)
             throw LCUIChatAttachmentError.unreadable
         }
         guard byteCount <= maximumByteCount else {
-            try? FileManager.default.removeItem(at: stagedFile)
+            try? FileManager.default.removeItem(at: fileURL)
             throw LCUIChatAttachmentError.tooLarge(byteCount: byteCount, maximum: maximumByteCount)
         }
 
+        let resolvedType = contentType ?? .data
         return LCUIChatAttachment(
             fileName: LCUIChatAttachmentStore.sanitizedFileName(
-                preferredFileName ?? stagedFile.lastPathComponent,
-                contentType: contentType
+                proposedName ?? fileURL.lastPathComponent,
+                contentType: resolvedType
             ),
-            fileURL: stagedFile,
+            fileURL: fileURL,
             byteCount: byteCount,
-            contentType: contentType,
-            kind: LCUIChatAttachmentKind(contentType: contentType)
+            contentType: resolvedType,
+            kind: LCUIChatAttachmentKind(contentType: resolvedType)
         )
+    }
+
+    /// Rewrites a movie into an allowed container when its own is not on the list.
+    /// A camera capture is always QuickTime, and `quickTimeMovie` does not conform to `mpeg4Movie`
+    private func remuxedMovie(
+        at source: URL,
+        contentType: UTType?,
+        allowedContentTypes: [UTType]
+    ) async throws -> (url: URL, contentType: UTType)? {
+        guard !allowedContentTypes.isEmpty,
+              let contentType,
+              contentType.conforms(to: .movie),
+              !allowedContentTypes.contains(where: { contentType.conforms(to: $0) })
+        else { return nil }
+
+        let candidates = allowedContentTypes.filter { $0.conforms(to: .movie) }
+        guard !candidates.isEmpty else { return nil }
+
+        let asset = AVURLAsset(url: source)
+        guard let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetPassthrough) else {
+            return nil
+        }
+        let compatible = await session.compatibleFileTypes()
+        guard let target = candidates.first(where: { compatible.contains(AVFileType($0.identifier)) }),
+              let fileExtension = target.preferredFilenameExtension
+        else { return nil }
+
+        let destination = try LCUIChatAttachmentStore.destination(
+            fileName: source.deletingPathExtension().lastPathComponent + "." + fileExtension
+        )
+        session.outputURL = destination
+        session.outputFileType = AVFileType(target.identifier)
+        await session.export()
+
+        guard session.status == .completed else {
+            try? FileManager.default.removeItem(at: destination)
+            LCUIChatAttachmentStore.logger.error(
+                "Failed to remux attachment: \(session.error?.localizedDescription ?? "unknown", privacy: .public)"
+            )
+            throw LCUIChatAttachmentError.unsupportedType(contentType)
+        }
+        return (destination, target)
     }
 
     private func validate(contentType: UTType?, against allowed: [UTType]) throws {
@@ -247,32 +306,45 @@ actor LCUIChatAttachmentImporter {
     }
 }
 
-/// Carries a photo-library item to disk without its bytes passing through memory.
-///
-/// `loadTransferable(type: Data.self)` — what the picker used to call — materialises the whole
-/// asset as `Data`. A `FileRepresentation` instead gives us a URL we can copy, so a 400 MB video
-/// costs disk rather than RAM.
-@available(iOS 16, *)
-struct LCUIChatTransferredFile: Transferable {
-    let url: URL
-
-    static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(importedContentType: .image) { received in
-            LCUIChatTransferredFile(url: try Self.ingest(received.file))
-        }
-        FileRepresentation(importedContentType: .movie) { received in
-            LCUIChatTransferredFile(url: try Self.ingest(received.file))
+private extension AVAssetExportSession {
+    /// `determineCompatibleFileTypes` and `exportAsynchronously` are required for iOS older than 18
+    func compatibleFileTypes() async -> [AVFileType] {
+        await withCheckedContinuation { continuation in
+            determineCompatibleFileTypes { continuation.resume(returning: $0) }
         }
     }
 
-    /// The received URL is valid only for the duration of the importing closure, so copy it now.
-    private static func ingest(_ received: URL) throws -> URL {
+    func export() async {
+        await withCheckedContinuation { continuation in
+            exportAsynchronously { continuation.resume() }
+        }
+    }
+}
+
+/// Carries a photo-library item to disk without its bytes passing through RAM for huge video files.
+@available(iOS 16, *)
+struct LCUIChatTransferredFile: Transferable {
+    let url: URL
+    /// Kept alongside the URL because the staged copy is named `UUID()-<name>`
+    let originalName: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .image) { received in
+            try Self.ingest(received.file)
+        }
+        FileRepresentation(importedContentType: .movie) { received in
+            try Self.ingest(received.file)
+        }
+    }
+
+    /// The received URL is valid only for the duration of the importing closure, so we copy it now.
+    private static func ingest(_ received: URL) throws -> LCUIChatTransferredFile {
         let fileName = LCUIChatAttachmentStore.sanitizedFileName(
             received.lastPathComponent,
             contentType: LCUIChatAttachmentStore.contentType(of: received)
         )
         let destination = try LCUIChatAttachmentStore.destination(fileName: fileName)
         try FileManager.default.copyItem(at: received, to: destination)
-        return destination
+        return LCUIChatTransferredFile(url: destination, originalName: fileName)
     }
 }

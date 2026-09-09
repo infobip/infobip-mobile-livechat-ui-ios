@@ -11,6 +11,8 @@ import UniformTypeIdentifiers
 @testable import LiveChatUI
 
 final class LCUIChatFileNameSanitisationTests: XCTestCase {
+    private static let generatedNamePattern = #"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.jpeg$"#
+
     private func sanitized(_ input: String?, _ type: UTType? = .jpeg) -> String {
         LCUIChatAttachmentStore.sanitizedFileName(input, contentType: type)
     }
@@ -47,13 +49,15 @@ final class LCUIChatFileNameSanitisationTests: XCTestCase {
     func testDotOnlyNamesFallBackToAGeneratedName() {
         for input in [".", "..", "...", " ", ""] {
             let result = sanitized(input)
-            XCTAssertTrue(result.hasPrefix("attachment-"), "unexpected result \(result) for \(input.debugDescription)")
-            XCTAssertTrue(result.hasSuffix(".jpeg"))
+            XCTAssertNotNil(
+                result.range(of: Self.generatedNamePattern, options: .regularExpression),
+                "unexpected result \(result) for \(input.debugDescription)"
+            )
         }
     }
 
     func testNilNameFallsBackToAGeneratedName() {
-        XCTAssertTrue(sanitized(nil).hasPrefix("attachment-"))
+        XCTAssertNotNil(sanitized(nil).range(of: Self.generatedNamePattern, options: .regularExpression))
     }
 
     func testCapsLengthWhilePreservingTheExtension() {
@@ -74,9 +78,8 @@ final class LCUIChatFileNameSanitisationTests: XCTestCase {
     /// user on a Buddhist or Persian calendar previously got a filename with a different year.
     func testGeneratedNameUsesAFixedGregorianFormat() {
         let result = LCUIChatAttachmentStore.generatedFileName(contentType: .jpeg)
-        let pattern = #"^attachment-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.jpeg$"#
         XCTAssertNotNil(
-            result.range(of: pattern, options: .regularExpression),
+            result.range(of: Self.generatedNamePattern, options: .regularExpression),
             "\(result) does not match the fixed timestamp format"
         )
     }

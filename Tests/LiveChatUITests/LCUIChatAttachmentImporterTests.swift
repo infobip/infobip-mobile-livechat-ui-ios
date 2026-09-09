@@ -140,12 +140,17 @@ final class LCUIChatAttachmentImporterTests: XCTestCase {
         XCTAssertFalse(attachment.fileName.contains(";"))
     }
 
-    func testAdoptDeletesFilesOverTheLimit() async throws {
+    func testFinishDeletesFilesOverTheLimit() async throws {
         let staged = try LCUIChatAttachmentStore.destination(fileName: "clip.mp4")
         try Data(repeating: 0, count: 4096).write(to: staged)
 
         do {
-            _ = try await importer.adopt(stagedFile: staged, preferredFileName: nil, maximumByteCount: 1024)
+            _ = try await importer.finish(
+                stagedFile: staged,
+                preferredFileName: nil,
+                allowedContentTypes: [],
+                maximumByteCount: 1024
+            )
             XCTFail("expected the oversized staged file to be rejected")
         } catch let error as LCUIChatAttachmentError {
             XCTAssertEqual(error, .tooLarge(byteCount: 4096, maximum: 1024))
@@ -157,19 +162,75 @@ final class LCUIChatAttachmentImporterTests: XCTestCase {
         )
     }
 
-    func testAdoptClassifiesVideoFromTheFileItself() async throws {
+    func testFinishClassifiesVideoFromTheFileItself() async throws {
         let staged = try LCUIChatAttachmentStore.destination(fileName: "clip.mp4")
         try Data(repeating: 0, count: 32).write(to: staged)
 
-        let attachment = try await importer.adopt(
+        let attachment = try await importer.finish(
             stagedFile: staged,
             preferredFileName: nil,
+            allowedContentTypes: [],
             maximumByteCount: 1024 * 1024
         )
         // Regression: library picks were hardcoded to `.image`, so a chosen video was handed to
         // the host as an image and then failed to preview.
         XCTAssertEqual(attachment.kind, .video)
         XCTAssertEqual(attachment.contentType, .mpeg4Movie)
+    }
+
+    func testClaimSurvivesDeletionOfTheOriginal() async throws {
+        let source = try makeFile(named: "capture.mov", byteCount: 2048)
+
+        let claimed = try LCUIChatAttachmentStore.claim(source)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: source.path), "the move should not leave a duplicate")
+
+        let attachment = try await importer.finish(
+            stagedFile: claimed,
+            preferredFileName: "capture.mov",
+            allowedContentTypes: [],
+            maximumByteCount: 1024 * 1024
+        )
+        XCTAssertEqual(attachment.byteCount, 2048)
+        XCTAssertEqual(attachment.fileName, "capture.mov")
+        XCTAssertEqual(attachment.kind, .video)
+    }
+
+    /// A camera capture is always QuickTime, and `quickTimeMovie` is a sibling of `mpeg4Movie`
+    /// rather than a subtype, so a widget that allows only `mp4` would otherwise reject every
+    /// recording. The bytes here are not a real movie, so the export cannot succeed — what this
+    /// asserts is that the failure is reported and the staged file is not left behind.
+    func testUnexportableMovieInADisallowedContainerIsRejectedAndCleanedUp() async throws {
+        let staged = try LCUIChatAttachmentStore.destination(fileName: "capture.mov")
+        try Data(repeating: 0, count: 32).write(to: staged)
+
+        do {
+            _ = try await importer.finish(
+                stagedFile: staged,
+                preferredFileName: nil,
+                allowedContentTypes: [.mpeg4Movie],
+                maximumByteCount: 1024 * 1024
+            )
+            XCTFail("expected a QuickTime file to be rejected when only MPEG-4 is allowed")
+        } catch let error as LCUIChatAttachmentError {
+            XCTAssertEqual(error, .unsupportedType(.quickTimeMovie))
+        }
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: staged.path))
+    }
+
+    /// The same container in the allowed list needs no rewrite at all.
+    func testMovieInAnAllowedContainerIsAcceptedUntouched() async throws {
+        let staged = try LCUIChatAttachmentStore.destination(fileName: "capture.mov")
+        try Data(repeating: 0, count: 32).write(to: staged)
+
+        let attachment = try await importer.finish(
+            stagedFile: staged,
+            preferredFileName: "capture.mov",
+            allowedContentTypes: [.quickTimeMovie, .mpeg4Movie],
+            maximumByteCount: 1024 * 1024
+        )
+        XCTAssertEqual(attachment.fileURL, staged)
+        XCTAssertEqual(attachment.contentType, .quickTimeMovie)
     }
 
     private func contentsOfStore() throws -> Set<String> {

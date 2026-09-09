@@ -115,7 +115,7 @@ public struct LCUIChatAttachmentPickerView: View {
             }
 
             if let filter = constraints.photoLibraryFilter {
-                PhotosPicker(selection: $photosPickerItem, matching: filter) {
+                PhotosPicker(selection: $photosPickerItem, matching: filter, preferredItemEncoding: .current) {
                     AttachmentRow(title: texts.photoLibrary, icon: icons.gallery, style: style)
                 }
                 .buttonStyle(.plain)
@@ -154,7 +154,12 @@ public struct LCUIChatAttachmentPickerView: View {
                     showsCamera = false
                     pendingSource = LCUIChatPendingAttachmentSource(capture)
                 },
-                onCancel: { showsCamera = false }
+                onCancel: { showsCamera = false },
+                onFailure: { error in
+                    showsCamera = false
+                    onError(error)
+                    dismiss()
+                }
             )
             .ignoresSafeArea()
         }
@@ -230,9 +235,10 @@ public struct LCUIChatAttachmentPickerView: View {
             guard let transferred = try await item.loadTransferable(type: LCUIChatTransferredFile.self) else {
                 throw LCUIChatAttachmentError.unreadable
             }
-            return try await Self.importer.adopt(
+            return try await Self.importer.finish(
                 stagedFile: transferred.url,
-                preferredFileName: nil,
+                preferredFileName: transferred.originalName,
+                allowedContentTypes: constraints.allowedContentTypes,
                 maximumByteCount: constraints.maximumAttachmentByteCount
             )
         }
@@ -251,9 +257,11 @@ public struct LCUIChatAttachmentPickerView: View {
                     maximumByteCount: constraints.maximumAttachmentByteCount
                 )
             case .cameraVideo(let url):
-                return try await Self.importer.stage(
-                    source: url,
-                    isSecurityScoped: false,
+                return try await Self.importer.finish(
+                    stagedFile: url,
+                    preferredFileName: LCUIChatAttachmentStore.generatedFileName(
+                        contentType: LCUIChatAttachmentStore.contentType(of: url)
+                    ),
                     allowedContentTypes: constraints.allowedContentTypes,
                     maximumByteCount: constraints.maximumAttachmentByteCount
                 )
@@ -385,6 +393,7 @@ struct LCUIChatCameraCaptureView: UIViewControllerRepresentable {
     let mediaTypes: [String]
     let onCapture: (Capture) -> Void
     let onCancel: () -> Void
+    let onFailure: (LCUIChatAttachmentError) -> Void
 
     enum Capture {
         case video(URL)
@@ -405,19 +414,26 @@ struct LCUIChatCameraCaptureView: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {
         context.coordinator.onCapture = onCapture
         context.coordinator.onCancel = onCancel
+        context.coordinator.onFailure = onFailure
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onCapture: onCapture, onCancel: onCancel)
+        Coordinator(onCapture: onCapture, onCancel: onCancel, onFailure: onFailure)
     }
 
     final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
         var onCapture: (Capture) -> Void
         var onCancel: () -> Void
+        var onFailure: (LCUIChatAttachmentError) -> Void
 
-        init(onCapture: @escaping (Capture) -> Void, onCancel: @escaping () -> Void) {
+        init(
+            onCapture: @escaping (Capture) -> Void,
+            onCancel: @escaping () -> Void,
+            onFailure: @escaping (LCUIChatAttachmentError) -> Void
+        ) {
             self.onCapture = onCapture
             self.onCancel = onCancel
+            self.onFailure = onFailure
         }
 
         // Neither callback dismisses the picker itself: SwiftUI presented it via
@@ -427,7 +443,18 @@ struct LCUIChatCameraCaptureView: UIViewControllerRepresentable {
             didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
         ) {
             if let videoURL = info[.mediaURL] as? URL {
-                onCapture(.video(videoURL))
+                // The recording lives in a temp file this picker deletes as it is dismissed, so
+                // ownership has to be taken here rather than on a later actor hop — by then the
+                // file is gone and every capture fails as unreadable. The move is a rename within
+                // the same container, so it costs nothing on the main thread.
+                do {
+                    onCapture(.video(try LCUIChatAttachmentStore.claim(videoURL)))
+                } catch {
+                    LCUIChatAttachmentStore.logger.error(
+                        "Failed to claim camera recording: \(error.localizedDescription, privacy: .public)"
+                    )
+                    onFailure(.unreadable)
+                }
             } else if let image = info[.originalImage] as? UIImage {
                 onCapture(.photo(image))
             } else {
