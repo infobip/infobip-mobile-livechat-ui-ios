@@ -38,8 +38,8 @@ public struct LCUIChatTheme: Equatable, Sendable {
 
         public init(
             prefersLiquidGlass: Bool = true,
-            composerContentOverlap: CGFloat = 10, // 30 for the optimal result, but only if no auto message btn exists
-            navigationBarContentOverlap: CGFloat = 11
+            composerContentOverlap: CGFloat = 30,
+            navigationBarContentOverlap: CGFloat = 0 // "soft" mode has nice visual effect but glitches when the webview scroll. Hard (default) has a hard cut in the effect that is not appealing. We leave it 0.
         ) {
             self.prefersLiquidGlass = prefersLiquidGlass
             self.composerContentOverlap = composerContentOverlap

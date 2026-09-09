@@ -93,7 +93,9 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
             }
         return Group {
             if usesLiquidGlassChrome {
-                navBarContent // system's will provide liquid glass effect
+                // No explicit colour, as the system background is the liquid glass one
+                navBarContent
+                    .toolbarBackground(.visible, for: .navigationBar)
             } else {
                 navBarContent
                     .toolbarBackground(colors.background, for: .navigationBar)

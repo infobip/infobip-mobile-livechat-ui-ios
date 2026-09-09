@@ -11,7 +11,6 @@ import AVFoundation
 import CoreTransferable
 import UIKit
 import UniformTypeIdentifiers
-import os
 
 /// Package-owned staging area for picked attachments.
 ///
@@ -20,8 +19,6 @@ import os
 enum LCUIChatAttachmentStore {
     private static let directoryName = "com.infobip.livechatui.attachments"
     private static let maximumFileNameLength = 128
-
-    static let logger = Logger(subsystem: "com.infobip.livechatui", category: "attachments")
 
     /// Fixed locale/calendar/time zone: the user's own would render `yyyy` as a Buddhist or Persian
     /// year, producing filenames that neither sort nor round-trip. Static, so it is built once.
@@ -162,7 +159,7 @@ actor LCUIChatAttachmentImporter {
 
         // Checked before the copy: rejecting a 500 MB video should not first duplicate it.
         guard let byteCount = LCUIChatAttachmentStore.byteCount(of: source) else {
-            throw LCUIChatAttachmentError.unreadable
+            throw LCUIChatAttachmentError.unreadable()
         }
         guard byteCount <= maximumByteCount else {
             throw LCUIChatAttachmentError.tooLarge(byteCount: byteCount, maximum: maximumByteCount)
@@ -173,8 +170,7 @@ actor LCUIChatAttachmentImporter {
             // Kernel-level copy: streams, so peak memory stays flat regardless of file size.
             try FileManager.default.copyItem(at: source, to: destination)
         } catch {
-            LCUIChatAttachmentStore.logger.error("Failed to stage attachment: \(error.localizedDescription, privacy: .public)")
-            throw LCUIChatAttachmentError.unreadable
+            throw LCUIChatAttachmentError.unreadable(underlyingError: error.localizedDescription)
         }
         return destination
     }
@@ -182,7 +178,7 @@ actor LCUIChatAttachmentImporter {
     /// Encodes and writes a camera photo (`UIImagePickerController` yields a `UIImage)` — there is no file URL to copy, yet
     func stage(photo: UIImage, maximumByteCount: Int) throws -> LCUIChatAttachment {
         guard let data = photo.jpegData(compressionQuality: Self.photoCompressionQuality) else {
-            throw LCUIChatAttachmentError.unreadable
+            throw LCUIChatAttachmentError.unreadable()
         }
         guard data.count <= maximumByteCount else {
             throw LCUIChatAttachmentError.tooLarge(byteCount: data.count, maximum: maximumByteCount)
@@ -193,8 +189,7 @@ actor LCUIChatAttachmentImporter {
         do {
             try data.write(to: destination, options: .atomic)
         } catch {
-            LCUIChatAttachmentStore.logger.error("Failed to stage photo: \(error.localizedDescription, privacy: .public)")
-            throw LCUIChatAttachmentError.unreadable
+            throw LCUIChatAttachmentError.unreadable(underlyingError: error.localizedDescription)
         }
 
         return LCUIChatAttachment(
@@ -233,7 +228,7 @@ actor LCUIChatAttachmentImporter {
 
         guard let byteCount = LCUIChatAttachmentStore.byteCount(of: fileURL) else {
             try? FileManager.default.removeItem(at: fileURL)
-            throw LCUIChatAttachmentError.unreadable
+            throw LCUIChatAttachmentError.unreadable()
         }
         guard byteCount <= maximumByteCount else {
             try? FileManager.default.removeItem(at: fileURL)
@@ -287,10 +282,7 @@ actor LCUIChatAttachmentImporter {
 
         guard session.status == .completed else {
             try? FileManager.default.removeItem(at: destination)
-            LCUIChatAttachmentStore.logger.error(
-                "Failed to remux attachment: \(session.error?.localizedDescription ?? "unknown", privacy: .public)"
-            )
-            throw LCUIChatAttachmentError.unsupportedType(contentType)
+            throw LCUIChatAttachmentError.unsupportedType(contentType, underlyingError: session.error?.localizedDescription)
         }
         return (destination, target)
     }

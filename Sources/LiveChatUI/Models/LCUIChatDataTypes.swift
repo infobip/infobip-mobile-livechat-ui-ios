@@ -78,9 +78,9 @@ public enum LCUIChatAttachmentError: Error, Equatable, Sendable {
     /// The file is larger than `LCUIChatConstraints.maximumAttachmentByteCount`.
     case tooLarge(byteCount: Int, maximum: Int)
     /// The file could not be read or copied — most often a File Provider denying access.
-    case unreadable
+    case unreadable(underlyingError: String? = nil)
     /// The picked item's type is not in `LCUIChatConstraints.allowedContentTypes`.
-    case unsupportedType(UTType?)
+    case unsupportedType(UTType?, underlyingError: String? = nil)
     /// Camera access has been denied or restricted; the user must change it in Settings.
     ///
     /// `LCUIChatAttachmentPickerView` presents this itself, with a link to Settings, rather than
@@ -96,6 +96,23 @@ public enum LCUIChatAttachmentError: Error, Equatable, Sendable {
             return texts.toGivePermission
         case .unreadable, .unsupportedType:
             return texts.uploadError
+        }
+    }
+
+    /// `underlyingError` is diagnostic detail, not part of the case's identity — two errors of the
+    /// same case are equal regardless of what system error produced them.
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        switch (lhs, rhs) {
+        case (.tooLarge(let lb, let lm), .tooLarge(let rb, let rm)):
+            return lb == rb && lm == rm
+        case (.unreadable, .unreadable):
+            return true
+        case (.unsupportedType(let lt, _), .unsupportedType(let rt, _)):
+            return lt == rt
+        case (.cameraPermissionDenied, .cameraPermissionDenied):
+            return true
+        default:
+            return false
         }
     }
 }

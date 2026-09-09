@@ -171,10 +171,7 @@ public struct LCUIChatAttachmentPickerView: View {
             case .success(let url):
                 pendingSource = LCUIChatPendingAttachmentSource(origin: .securityScopedFile(url))
             case .failure(let error):
-                LCUIChatAttachmentStore.logger.error(
-                    "Document import failed: \(error.localizedDescription, privacy: .public)"
-                )
-                onError(.unreadable)
+                onError(.unreadable(underlyingError: error.localizedDescription))
                 dismiss()
             }
         }
@@ -233,7 +230,7 @@ public struct LCUIChatAttachmentPickerView: View {
         guard let item = photosPickerItem else { return }
         await stage {
             guard let transferred = try await item.loadTransferable(type: LCUIChatTransferredFile.self) else {
-                throw LCUIChatAttachmentError.unreadable
+                throw LCUIChatAttachmentError.unreadable()
             }
             return try await Self.importer.finish(
                 stagedFile: transferred.url,
@@ -292,10 +289,7 @@ public struct LCUIChatAttachmentPickerView: View {
         } catch let error as LCUIChatAttachmentError {
             onError(error)
         } catch {
-            LCUIChatAttachmentStore.logger.error(
-                "Attachment staging failed: \(error.localizedDescription, privacy: .public)"
-            )
-            onError(.unreadable)
+            onError(.unreadable(underlyingError: error.localizedDescription))
         }
         dismiss()
     }
@@ -450,10 +444,7 @@ struct LCUIChatCameraCaptureView: UIViewControllerRepresentable {
                 do {
                     onCapture(.video(try LCUIChatAttachmentStore.claim(videoURL)))
                 } catch {
-                    LCUIChatAttachmentStore.logger.error(
-                        "Failed to claim camera recording: \(error.localizedDescription, privacy: .public)"
-                    )
-                    onFailure(.unreadable)
+                    onFailure(.unreadable(underlyingError: error.localizedDescription))
                 }
             } else if let image = info[.originalImage] as? UIImage {
                 onCapture(.photo(image))

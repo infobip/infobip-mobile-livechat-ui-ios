@@ -123,7 +123,7 @@ final class LCUIChatAttachmentImporterTests: XCTestCase {
             )
             XCTFail("expected a missing file to be rejected")
         } catch let error as LCUIChatAttachmentError {
-            XCTAssertEqual(error, .unreadable)
+            XCTAssertEqual(error, .unreadable())
         }
     }
 
