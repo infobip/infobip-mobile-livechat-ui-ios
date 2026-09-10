@@ -26,7 +26,7 @@ The package temporarily *links* against iOS 15 due to legacy reasons in other de
 
 ```swift
 dependencies: [
-    .package(url: "<repository-url>", from: "latest version")
+    .package(url: "https://github.com/infobip/infobip-mobile-livechat-ui-ios", from: "latest version")
 ]
 ```
 
