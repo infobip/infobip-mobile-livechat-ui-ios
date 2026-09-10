@@ -154,7 +154,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
                 .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         } else {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(colors.secondary.opacity(0.12))
+                .fill(colors.secondary.opacity(0.05))
         }
     }
 
