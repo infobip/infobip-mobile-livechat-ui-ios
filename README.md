@@ -8,6 +8,8 @@ widget state — it renders what you give it and calls back when the user does s
 content itself is supplied by the host as a `UIView` (typically a `WKWebView`) that the package
 hosts for you.
 
+If you want the full LiveChat solution, please continue reading [here](https://github.com/infobip/mobile-messaging-sdk-ios/wiki/In%E2%80%90app-chat).
+
 ## Requirements
 
 | | |
@@ -16,17 +18,7 @@ hosts for you.
 | Views require | **iOS 16** |
 | Swift | 5.9+ (built in Swift 5 language mode with complete data-race checking) |
 
-The two rows above are both correct and worth reading twice. The package *links* against iOS 15 so
-that adding it does not force you to raise your app's minimum deployment target, but every view it
-exposes is annotated `@available(iOS 16, *)` and must be used from an iOS 16 code path:
-
-```swift
-if #available(iOS 16, *) {
-    LCUIChatScreenView(onSend: viewModel.send) { chatWebContent }
-} else {
-    myLegacyChatScreen
-}
-```
+The package temporarily *links* against iOS 15 due to legacy reasons in other dependency, but only offer view in iOS 16, which will soon be the deployment target.
 
 ## Installation
 
@@ -34,19 +26,17 @@ if #available(iOS 16, *) {
 
 ```swift
 dependencies: [
-    .package(url: "<repository-url>", from: "0.1.0")
+    .package(url: "<repository-url>", from: "latest version")
 ]
 ```
 
 ### CocoaPods
 
 ```ruby
-pod 'LiveChatUI', '~> 0.1'
+pod 'LiveChatUI', '~> latest version'
 ```
 
-Note that CocoaPods cannot express per-target Swift settings, so the strict-concurrency flags in
-`Package.swift` do not apply to a pod integration — the code is written to compile cleanly under
-the Swift 6 language mode either way.
+Note that CocoaPods will cease to be updated at the end of 2026.
 
 ## Info.plist keys
 
