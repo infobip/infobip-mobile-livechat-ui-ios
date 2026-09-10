@@ -49,13 +49,16 @@ public struct LCUIChatTheme: Equatable, Sendable {
 
     public struct Banner: Equatable, Sendable {
         public private(set) var font: Font
+        public private(set) var fontColor: Color
         public private(set) var backgroundColor: Color
 
         public init(
             font: Font = .subheadline,
+            fontColor: Color = Color.white,
             backgroundColor: Color = Color(red: 0.702, green: 0.149, blue: 0.118) // #B3261E
         ) {
             self.font = font
+            self.fontColor = fontColor
             self.backgroundColor = backgroundColor
         }
     }
