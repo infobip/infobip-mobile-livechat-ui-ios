@@ -100,12 +100,16 @@ public struct LCUIChatAttachmentPreview: View {
             }
         case .video:
             VideoPlayer(player: player)
+                .id(attachment.id)
                 .onAppear {
                     if player == nil {
                         player = AVPlayer(url: attachment.sourceURL)
                     }
                 }
-                .onDisappear { player?.pause() }
+                .onDisappear {
+                    player?.pause()
+                    player = nil
+                }
         case .document:
             LCUIChatQuickLookView(url: attachment.sourceURL)
         }

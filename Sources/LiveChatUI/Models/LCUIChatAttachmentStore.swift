@@ -20,8 +20,6 @@ enum LCUIChatAttachmentStore {
     private static let directoryName = "com.infobip.livechatui.attachments"
     private static let maximumFileNameLength = 128
 
-    /// Fixed locale/calendar/time zone: the user's own would render `yyyy` as a Buddhist or Persian
-    /// year, producing filenames that neither sort nor round-trip. Static, so it is built once.
     private static let timestampFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale.current
@@ -40,7 +38,8 @@ enum LCUIChatAttachmentStore {
 
     /// A unique destination that still carries the sanitised name, so nothing ever collides.
     static func destination(fileName: String) throws -> URL {
-        try directory().appendingPathComponent("\(UUID().uuidString)-\(fileName)", isDirectory: false)
+        let safeName = fileName.replacingOccurrences(of: "/", with: "_")
+        return try directory().appendingPathComponent("\(UUID().uuidString)-\(safeName)", isDirectory: false)
     }
 
     static func removeAll() {

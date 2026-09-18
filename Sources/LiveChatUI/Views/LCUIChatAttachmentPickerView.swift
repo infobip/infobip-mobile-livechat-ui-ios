@@ -82,7 +82,7 @@ public struct LCUIChatAttachmentPickerView: View {
     }
 
     private var cameraMediaTypes: [String] {
-        let available = UIImagePickerController.availableMediaTypes(for: .camera) ?? [UTType.image.identifier]
+        let available = UIImagePickerController.availableMediaTypes(for: .camera) ?? []
         let permitted = available.filter { identifier in
             guard let type = UTType(identifier) else { return false }
             if type.conforms(to: .movie) || type.conforms(to: .video) {
@@ -93,7 +93,12 @@ public struct LCUIChatAttachmentPickerView: View {
             }
             return false
         }
-        return permitted.isEmpty ? [UTType.image.identifier] : permitted
+        if !permitted.isEmpty { return permitted }
+        // System reported nothing usable — fall back to what the constraints actually allow.
+        var fallback: [String] = []
+        if constraints.allowsImageContent { fallback.append(UTType.image.identifier) }
+        if constraints.allowsVideoContent { fallback.append(UTType.movie.identifier) }
+        return fallback
     }
 
     // MARK: - Body
@@ -115,7 +120,7 @@ public struct LCUIChatAttachmentPickerView: View {
             }
 
             if let filter = constraints.photoLibraryFilter {
-                PhotosPicker(selection: $photosPickerItem, matching: filter, preferredItemEncoding: .current) {
+                PhotosPicker(selection: $photosPickerItem, matching: filter, preferredItemEncoding: .compatible) {
                     AttachmentRow(title: texts.photoLibrary, icon: icons.gallery, style: style)
                 }
                 .buttonStyle(.plain)

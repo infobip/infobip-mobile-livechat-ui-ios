@@ -71,7 +71,8 @@ public struct LCUIChatComposerView: LCUIChatComposing {
             && !text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !isOverLimit
     }
-    private var isOverLimit: Bool { text.wrappedValue.count > maximumCharacterCount }
+    private var characterCount: UInt { UInt(text.wrappedValue.count) }
+    private var isOverLimit: Bool { characterCount > maximumCharacterCount }
 
     public var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -124,8 +125,8 @@ public struct LCUIChatComposerView: LCUIChatComposing {
             .background(composerContainerBackground)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 
-            if text.wrappedValue.count >= charCounterVisibleThreshold {
-                Text("\(text.wrappedValue.count)/\(maximumCharacterCount)")
+            if characterCount >= charCounterVisibleThreshold {
+                Text("\(characterCount)/\(maximumCharacterCount)")
                     .font(.caption2)
                     .foregroundStyle(isOverLimit ? Color.red : colors.secondary)
                     .padding(.top, 6)
@@ -176,10 +177,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
     private func submit() {
         guard isSendEnabled else { return }
         onSend(text.wrappedValue)
-        // Hosts that own the text via a binding decide themselves when to clear it, so a failed end can keep the draft rather than losing what the user typed.
-        if externalText == nil {
-            internalText = ""
-        }
+        text.wrappedValue = ""
     }
 }
 

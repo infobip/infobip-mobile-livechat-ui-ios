@@ -21,6 +21,7 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
     private let error: LCUIChatError?
     private let bannerMessage: Text?
     private let onBannerTapped: () -> Void
+    private let text: Binding<String>?
     private let onSend: (String) -> Void
     private let onAttachmentTapped: () -> Void
     private let onTextChange: (String) -> Void
@@ -36,6 +37,7 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
         error: LCUIChatError? = nil,
         bannerMessage: Text? = nil,
         onBannerTapped: @escaping () -> Void = {},
+        text: Binding<String>? = nil,
         onSend: @escaping (String) -> Void,
         onAttachmentTapped: @escaping () -> Void = {},
         onTextChange: @escaping (String) -> Void = { _ in },
@@ -50,6 +52,7 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
         self.error = error
         self.bannerMessage = bannerMessage
         self.onBannerTapped = onBannerTapped
+        self.text = text
         self.onSend = onSend
         self.onAttachmentTapped = onAttachmentTapped
         self.onTextChange = onTextChange
@@ -131,6 +134,7 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
                 composerType.init(
                     configuration: LCUIChatComposerConfiguration(
                         isEnabled: isComposerEnabled,
+                        text: text,
                         onSend: onSend,
                         onAttachmentTapped: onAttachmentTapped,
                         onTextChange: onTextChange
@@ -164,6 +168,7 @@ public extension LCUIChatScreenView where Composer == LCUIChatComposerView {
         error: LCUIChatError? = nil,
         bannerMessage: Text? = nil,
         onBannerTapped: @escaping () -> Void = {},
+        text: Binding<String>? = nil,
         onSend: @escaping (String) -> Void,
         onAttachmentTapped: @escaping () -> Void = {},
         onTextChange: @escaping (String) -> Void = { _ in },
@@ -179,6 +184,7 @@ public extension LCUIChatScreenView where Composer == LCUIChatComposerView {
             error: error,
             bannerMessage: bannerMessage,
             onBannerTapped: onBannerTapped,
+            text: text,
             onSend: onSend,
             onAttachmentTapped: onAttachmentTapped,
             onTextChange: onTextChange,

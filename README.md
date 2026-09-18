@@ -103,13 +103,12 @@ environment:
 ```
 
 All user-facing strings are `Text` values you supply — the package's own defaults are English
-placeholders. Localize by passing already-localized `Text` from your own bundle. This includes the
-VoiceOver labels for the icon-only controls, under `LCUIChatTexts.Accessibility`.
+placeholders. Localize by passing already-localized `Text` from your own bundle.
 
 `LCUIChatConstraints.allowedContentTypes` is applied consistently to all three attachment entry
 points, so restricting to images hides the video option in the library picker and the camera alike.
 If your configuration arrives as file extensions, use the `allowedFileExtensions:` initializer —
-extensions the system cannot resolve to a declared type are dropped and logged rather than silently
+extensions the system cannot resolve to a declared type are dropped rather than silently
 mismatching every file the user picks.
 
 ### Attachment lifecycle

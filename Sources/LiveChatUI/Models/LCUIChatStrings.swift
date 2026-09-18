@@ -29,7 +29,7 @@ public struct LCUIChatTexts: Sendable {
             toGivePermission: Text = Text("To give permissions go to Settings"),
             goToSettings: Text = Text("Settings"),
             share: Text = Text("Share"),
-            attachments: Text = Text("Attachments"),
+            attachments: Text = Text("Attachments")
         ) {
             self.takePhotoOrVideo = takePhotoOrVideo
             self.photoLibrary = photoLibrary

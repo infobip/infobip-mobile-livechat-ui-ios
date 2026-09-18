@@ -12,12 +12,18 @@ import WebKit
 
 @available(iOS 16, *)
 public struct LCUIChatWebContentHost<WebView: UIView>: UIViewRepresentable {
+    @Environment(\.lcuiChatSettings) private var settings
     private let webView: WebView
-    private let usesLiquidGlassChrome: Bool
 
-    public init(webView: WebView, usesLiquidGlassChrome: Bool = false) {
+    public init(webView: WebView) {
         self.webView = webView
-        self.usesLiquidGlassChrome = usesLiquidGlassChrome
+    }
+
+    private var usesLiquidGlassChrome: Bool {
+        if #available(iOS 26, *) {
+            return settings.theme.layout.prefersLiquidGlass
+        }
+        return false
     }
 
     public func makeUIView(context: Context) -> WebView {
@@ -41,4 +47,5 @@ public struct LCUIChatWebContentHost<WebView: UIView>: UIViewRepresentable {
 @available(iOS 16, *)
 #Preview {
     LCUIChatWebContentHost(webView: UIView())
+        .lcuiChatSettings(.init())
 }
