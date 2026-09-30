@@ -9,10 +9,29 @@
 import SwiftUI
 import UIKit
 
+private final class LCUIChatBundleToken {}
+
 extension LCUIChatIcons {
-    // Public access to the internal, SPM-generated, `Bundle.module`
+    // The synthesized `Bundle.module` symbol only exists once SPM's build planning
+    // generates `resource_bundle_accessor.swift`.
+    static let resourceBundle: Bundle = {
+        let bundleName = "infobip-mobile-livechat-ui-ios_LiveChatUI.bundle"
+        let candidateURLs = [
+            Bundle.main.resourceURL,
+            Bundle(for: LCUIChatBundleToken.self).resourceURL,
+            Bundle.main.bundleURL
+        ]
+        for case let url? in candidateURLs {
+            let bundleURL = url.appendingPathComponent(bundleName)
+            if let bundle = Bundle(url: bundleURL) {
+                return bundle
+            }
+        }
+        return Bundle(for: LCUIChatBundleToken.self)
+    }()
+
     public static func bundledImage(named name: String) -> Image {
-        Image(name, bundle: .module)
+        Image(name, bundle: resourceBundle)
     }
 }
 
