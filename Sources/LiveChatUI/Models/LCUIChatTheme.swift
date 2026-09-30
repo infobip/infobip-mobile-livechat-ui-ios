@@ -9,25 +9,43 @@
 import SwiftUI
 
 public struct LCUIChatTheme: Equatable, Sendable {
-    public struct Colors: Equatable, Sendable {
-        public private(set) var primary: Color
-        public private(set) var secondary: Color
-        public private(set) var background: Color
-        public private(set) var sendButtonBackground: Color
-        public private(set) var sendButtonTint: Color
+    public enum ColorMode: Hashable, Sendable {
+        case light
+        case dark
+    }
 
-        public init(
-            primary: Color = .black,
-            secondary: Color = Color(red: 0.3608, green: 0.3569, blue: 0.3490), // #5C5B59
-            background: Color = Color(.systemBackground),
-            sendButtonBackground: Color = .black,
-            sendButtonTint: Color = .white
+    public struct Colors: Equatable, Sendable {
+        public var primary: Color
+        public var secondary: Color
+        public var background: Color
+        public var sendButtonBackground: Color {
+            return primary
+        }
+        public var sendButtonTint: Color {
+            return background
+        }
+
+        init(
+            primary: Color,
+            secondary: Color,
+            background: Color
         ) {
             self.primary = primary
             self.secondary = secondary
             self.background = background
-            self.sendButtonBackground = sendButtonBackground
-            self.sendButtonTint = sendButtonTint
+        }
+
+        
+        public static var light: Colors {
+            return Colors(primary: Color(lcHex: "383533"),
+                          secondary: Color(lcHex: "5C5B59"),
+                          background: Color(.systemBackground))
+        }
+
+        public static var dark: Colors {
+            return Colors(primary: .white,
+                          secondary: .white,
+                          background: Color(lcHex: "141414"))
         }
     }
 
@@ -55,7 +73,7 @@ public struct LCUIChatTheme: Equatable, Sendable {
         public init(
             font: Font = .subheadline,
             fontColor: Color = Color.white,
-            backgroundColor: Color = Color(red: 0.702, green: 0.149, blue: 0.118) // #B3261E
+            backgroundColor: Color = Color(lcHex:"B3261E")
         ) {
             self.font = font
             self.fontColor = fontColor
@@ -63,7 +81,24 @@ public struct LCUIChatTheme: Equatable, Sendable {
         }
     }
 
-    public private(set) var colors: Colors
+    private var lightColors: Colors
+    private var darkColors: Colors
+    public var currentColorMode: ColorMode = .light
+    public var lightPrimaryColor: Color {
+        didSet {
+            lightColors.primary = lightPrimaryColor
+        }
+    }
+    public var darkPrimaryColor: Color {
+        didSet {
+            darkColors.primary = darkPrimaryColor
+        }
+    }
+    
+    public var colors: Colors {
+        return currentColorMode == .dark ? darkColors : lightColors
+    }
+
     public private(set) var layout: Layout
     public private(set) var banner: Banner
 
@@ -71,11 +106,19 @@ public struct LCUIChatTheme: Equatable, Sendable {
     private static let disabledAlphaDarker: Double = 0.75
 
     public init(
-        colors: Colors = Colors(),
+        lightPrimaryColor: Color = Color(lcHex: "383533"),
+        darkPrimaryColor: Color = .white,
+        currentColorMode: ColorMode = .light,
         layout: Layout = Layout(),
         banner: Banner = Banner()
     ) {
-        self.colors = colors
+        self.lightColors = Colors.light
+        self.darkColors = Colors.dark
+        self.lightPrimaryColor = lightPrimaryColor
+        self.darkPrimaryColor = darkPrimaryColor
+        self.lightColors.primary = lightPrimaryColor
+        self.darkColors.primary = darkPrimaryColor
+        self.currentColorMode = currentColorMode
         self.layout = layout
         self.banner = banner
     }
@@ -103,5 +146,25 @@ public extension EnvironmentValues {
 public extension View {
     func lcuiChatSettings(_ settings: LCUIChatSettings) -> some View {
         environment(\.lcuiChatSettings, settings)
+    }
+}
+
+public extension Color {
+    init(lcHex: String, alpha: Double = 1) {
+        var sanitized = lcHex
+        if sanitized.hasPrefix("#") {
+            sanitized.removeFirst()
+        }
+        var hexValue: UInt64 = 0
+        let scanned = Scanner(string: sanitized).scanHexInt64(&hexValue)
+        guard scanned, sanitized.count == 6 else {
+            assertionFailure("LiveChatUI: \"\(lcHex)\" is not a valid 6-digit hex color; falling back to black.")
+            self = .black
+            return
+        }
+        let r = Double((hexValue & 0xFF0000) >> 16) / 255
+        let g = Double((hexValue & 0x00FF00) >> 8) / 255
+        let b = Double(hexValue & 0x0000FF) / 255
+        self.init(red: r, green: g, blue: b, opacity: alpha)
     }
 }

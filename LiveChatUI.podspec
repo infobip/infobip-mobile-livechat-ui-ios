@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'LiveChatUI'
-  s.version          = '0.1.4'
+  s.version          = '0.1.8'
   s.summary          = 'UI components for Infobip Live Chat.'
   s.description      = <<-DESC
 LiveChatUI provides SwiftUI-based UI components for building Infobip Live Chat
@@ -16,6 +16,7 @@ experiences on iOS.
   s.swift_version    = '5.9'
 
   s.source_files     = 'Sources/LiveChatUI/**/*.swift'
+  s.resource_bundles = { 'LiveChatUI' => ['Sources/LiveChatUI/Resources/Media.xcassets'] }
   s.module_name      = 'LiveChatUI'
 
   s.frameworks       = 'Foundation', 'SwiftUI', 'UIKit', 'AVKit', 'Photos', 'PhotosUI', 'QuickLook', 'WebKit', 'UniformTypeIdentifiers'

@@ -40,7 +40,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
     }
 
     private let buttonSize: CGFloat = 44
-    private let buttonIconSize: CGFloat = 20
+    private let buttonIconSize: CGFloat = 22
 
     public init(
         isEnabled: Bool = true,
@@ -81,8 +81,8 @@ public struct LCUIChatComposerView: LCUIChatComposing {
                     .lineLimit(1...4) // After 4 lines, text will just start scrolling
                     .focused($isFocused)
                     .disabled(!isEnabled)
-                    .foregroundStyle(colors.primary)
-                    .tint(colors.primary)
+                    .foregroundStyle(colors.secondary)
+                    .tint(colors.secondary)
                     .padding(.horizontal, 4)
                     .onChange(of: text.wrappedValue) { newValue in
                         onTextChange(newValue)
@@ -152,10 +152,15 @@ public struct LCUIChatComposerView: LCUIChatComposing {
         if #available(iOS 26, *), layout.prefersLiquidGlass {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(.clear)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .glassEffect(
+                    theme.currentColorMode == .dark
+                        ? .regular.tint(colors.background.opacity(0.95))
+                        : .regular,
+                    in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+                )
         } else {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(colors.secondary.opacity(0.05))
+                .fill(colors.background.opacity(0.05))
         }
     }
 
@@ -199,3 +204,19 @@ public struct LCUIChatComposerView: LCUIChatComposing {
     .lcuiChatSettings(.init())
 }
 
+private var darkTheme: LCUIChatTheme {
+    LCUIChatTheme(currentColorMode: .dark)
+}
+
+@available(iOS 16, *)
+#Preview("Dark") {
+    VStack{
+        Spacer()
+        LCUIChatComposerView(
+            isEnabled: true,
+            onSend: { _ in }
+        )
+        .lcuiChatSettings(.init(theme: darkTheme))
+    }
+    .background(.black)
+}

@@ -9,6 +9,31 @@
 import SwiftUI
 import UIKit
 
+private final class LCUIChatBundleToken {}
+
+extension LCUIChatIcons {
+    static let resourceBundle: Bundle = {
+        #if SWIFT_PACKAGE
+        return Bundle.module
+        #else // To remove after cocoapods is frozen 
+        let podBundle = Bundle(for: LCUIChatBundleToken.self)
+        if let resourceBundleURL = podBundle.url(forResource: "LiveChatUI", withExtension: "bundle"),
+           let resourceBundle = Bundle(url: resourceBundleURL) {
+            return resourceBundle
+        }
+        return podBundle
+        #endif
+    }()
+
+    public static func bundledImage(named name: String, fallback: Image) -> Image {
+        guard UIImage(named: name, in: resourceBundle, compatibleWith: nil) != nil else {
+            assertionFailure("LiveChatUI: could not find image \"\(name)\" in \(resourceBundle); falling back to a system symbol.")
+            return fallback
+        }
+        return Image(name, bundle: resourceBundle)
+    }
+}
+
 public struct LCUIChatIcons: Sendable {
     public struct Attachments: Sendable {
         public private(set) var camera: Image
@@ -54,7 +79,7 @@ public struct LCUIChatIcons: Sendable {
     public init (
         attachments: Attachments = Attachments(),
         navigation: Navigation = Navigation(),
-        sendButton: Image = Image(systemName: "paperplane.fill"),
+        sendButton: Image = LCUIChatIcons.bundledImage(named: "SendButtonIcon", fallback: Image(systemName: "paperplane.fill")),
         fullScreenErrorIcon: Image = Image(systemName: "exclamationmark.circle")
        ) {
            self.attachments = attachments
