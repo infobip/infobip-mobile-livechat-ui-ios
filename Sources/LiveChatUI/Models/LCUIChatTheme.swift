@@ -150,7 +150,7 @@ public extension View {
 }
 
 public extension Color {
-    init(lcHex: String) {
+    init(lcHex: String, alpha: Double = 1) {
         var sanitized = lcHex
         if sanitized.hasPrefix("#") {
             sanitized.removeFirst()
@@ -158,12 +158,13 @@ public extension Color {
         var hexValue: UInt64 = 0
         let scanned = Scanner(string: sanitized).scanHexInt64(&hexValue)
         guard scanned, sanitized.count == 6 else {
+            assertionFailure("LiveChatUI: \"\(lcHex)\" is not a valid 6-digit hex color; falling back to black.")
             self = .black
             return
         }
         let r = Double((hexValue & 0xFF0000) >> 16) / 255
         let g = Double((hexValue & 0x00FF00) >> 8) / 255
         let b = Double(hexValue & 0x0000FF) / 255
-        self.init(red: r, green: g, blue: b)
+        self.init(red: r, green: g, blue: b, opacity: alpha)
     }
 }

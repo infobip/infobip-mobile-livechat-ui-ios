@@ -12,26 +12,22 @@ import UIKit
 private final class LCUIChatBundleToken {}
 
 extension LCUIChatIcons {
-    // The synthesized `Bundle.module` symbol only exists once SPM's build planning
-    // generates `resource_bundle_accessor.swift`.
     static let resourceBundle: Bundle = {
-        let bundleName = "infobip-mobile-livechat-ui-ios_LiveChatUI.bundle"
-        let candidateURLs = [
-            Bundle.main.resourceURL,
-            Bundle(for: LCUIChatBundleToken.self).resourceURL,
-            Bundle.main.bundleURL
-        ]
-        for case let url? in candidateURLs {
-            let bundleURL = url.appendingPathComponent(bundleName)
-            if let bundle = Bundle(url: bundleURL) {
-                return bundle
-            }
+        #if SWIFT_PACKAGE
+        return Bundle.module
+        #else // To remove after cocoapods is no more
+        let podBundle = Bundle(for: LCUIChatBundleToken.self)
+        if let resourceBundleURL = podBundle.url(forResource: "LiveChatUI", withExtension: "bundle"),
+           let resourceBundle = Bundle(url: resourceBundleURL) {
+            return resourceBundle
         }
-        return Bundle(for: LCUIChatBundleToken.self)
+        return podBundle
+        #endif
     }()
 
     public static func bundledImage(named name: String, fallback: Image) -> Image {
         guard UIImage(named: name, in: resourceBundle, compatibleWith: nil) != nil else {
+            assertionFailure("LiveChatUI: could not find image \"\(name)\" in \(resourceBundle); falling back to a system symbol.")
             return fallback
         }
         return Image(name, bundle: resourceBundle)

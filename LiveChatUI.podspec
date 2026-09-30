@@ -16,7 +16,7 @@ experiences on iOS.
   s.swift_version    = '5.9'
 
   s.source_files     = 'Sources/LiveChatUI/**/*.swift'
-  s.resources        = 'Sources/LiveChatUI/Resources/Media.xcassets'
+  s.resource_bundles = { 'LiveChatUI' => ['Sources/LiveChatUI/Resources/Media.xcassets'] }
   s.module_name      = 'LiveChatUI'
 
   s.frameworks       = 'Foundation', 'SwiftUI', 'UIKit', 'AVKit', 'Photos', 'PhotosUI', 'QuickLook', 'WebKit', 'UniformTypeIdentifiers'
