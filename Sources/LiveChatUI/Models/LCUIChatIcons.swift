@@ -30,8 +30,11 @@ extension LCUIChatIcons {
         return Bundle(for: LCUIChatBundleToken.self)
     }()
 
-    public static func bundledImage(named name: String) -> Image {
-        Image(name, bundle: resourceBundle)
+    public static func bundledImage(named name: String, fallback: Image) -> Image {
+        guard UIImage(named: name, in: resourceBundle, compatibleWith: nil) != nil else {
+            return fallback
+        }
+        return Image(name, bundle: resourceBundle)
     }
 }
 
@@ -80,7 +83,7 @@ public struct LCUIChatIcons: Sendable {
     public init (
         attachments: Attachments = Attachments(),
         navigation: Navigation = Navigation(),
-        sendButton: Image = LCUIChatIcons.bundledImage(named: "SendButtonIcon"),
+        sendButton: Image = LCUIChatIcons.bundledImage(named: "SendButtonIcon", fallback: Image(systemName: "paperplane.fill")),
         fullScreenErrorIcon: Image = Image(systemName: "exclamationmark.circle")
        ) {
            self.attachments = attachments

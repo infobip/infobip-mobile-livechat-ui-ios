@@ -91,7 +91,7 @@ public struct LCUIChatTheme: Equatable, Sendable {
     }
     public var darkPrimaryColor: Color {
         didSet {
-            lightColors.primary = darkPrimaryColor
+            darkColors.primary = darkPrimaryColor
         }
     }
     
@@ -113,9 +113,11 @@ public struct LCUIChatTheme: Equatable, Sendable {
         banner: Banner = Banner()
     ) {
         self.lightColors = Colors.light
+        self.darkColors = Colors.dark
         self.lightPrimaryColor = lightPrimaryColor
         self.darkPrimaryColor = darkPrimaryColor
-        self.darkColors = Colors.dark
+        self.lightColors.primary = lightPrimaryColor
+        self.darkColors.primary = darkPrimaryColor
         self.currentColorMode = currentColorMode
         self.layout = layout
         self.banner = banner
@@ -149,8 +151,16 @@ public extension View {
 
 public extension Color {
     init(lcHex: String) {
-        var hexValue = UInt64(0)
-        Scanner(string: lcHex).scanHexInt64(&hexValue)
+        var sanitized = lcHex
+        if sanitized.hasPrefix("#") {
+            sanitized.removeFirst()
+        }
+        var hexValue: UInt64 = 0
+        let scanned = Scanner(string: sanitized).scanHexInt64(&hexValue)
+        guard scanned, sanitized.count == 6 else {
+            self = .black
+            return
+        }
         let r = Double((hexValue & 0xFF0000) >> 16) / 255
         let g = Double((hexValue & 0x00FF00) >> 8) / 255
         let b = Double(hexValue & 0x0000FF) / 255
