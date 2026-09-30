@@ -90,7 +90,11 @@ environment:
 ```swift
 .lcuiChatSettings(
     LCUIChatSettings(
-        theme: LCUIChatTheme(colors: .init(primary: .white, background: .black)),
+        theme: LCUIChatTheme(
+            lightPrimaryColor: .black,
+            darkPrimaryColor: .white,
+            currentColorMode: .light
+        ),
         texts: LCUIChatTexts(navigationTitle: Text("Support")),
         icons: LCUIChatIcons(sendButton: Image("send")),
         constraints: LCUIChatConstraints(
@@ -101,6 +105,18 @@ environment:
     )
 )
 ```
+
+Color customization is intentionally narrow: `lightPrimaryColor`/`darkPrimaryColor` set the single
+accent color used per mode (navigation, send button, etc). `secondary` and `background` come from
+the fixed `LCUIChatTheme.Colors.light`/`.dark` palettes and aren't independently brandable, and
+`sendButtonBackground`/`sendButtonTint` are derived from `primary`/`background` rather than
+separate settings. `LCUIChatTheme.Layout(prefersLiquidGlass:)` (default `true`, ignored below
+iOS 26) is the other themeable knob.
+
+`currentColorMode: LCUIChatTheme.ColorMode` (`.light`/`.dark`) selects which palette is active, but
+it is **not** tied to the system appearance automatically — track appearance yourself (e.g. via
+`@Environment(\.colorScheme)`) and re-inject a `LCUIChatTheme` with the matching mode when it
+changes.
 
 All user-facing strings are `Text` values you supply — the package's own defaults are English
 placeholders. Localize by passing already-localized `Text` from your own bundle.

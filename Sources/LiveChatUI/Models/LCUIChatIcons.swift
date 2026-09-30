@@ -9,6 +9,13 @@
 import SwiftUI
 import UIKit
 
+extension LCUIChatIcons {
+    // Public access to the internal, SPM-generated, `Bundle.module`
+    public static func bundledImage(named name: String) -> Image {
+        Image(name, bundle: .module)
+    }
+}
+
 public struct LCUIChatIcons: Sendable {
     public struct Attachments: Sendable {
         public private(set) var camera: Image
@@ -54,7 +61,7 @@ public struct LCUIChatIcons: Sendable {
     public init (
         attachments: Attachments = Attachments(),
         navigation: Navigation = Navigation(),
-        sendButton: Image = Image(systemName: "paperplane.fill"),
+        sendButton: Image = LCUIChatIcons.bundledImage(named: "SendButtonIcon"),
         fullScreenErrorIcon: Image = Image(systemName: "exclamationmark.circle")
        ) {
            self.attachments = attachments

@@ -17,6 +17,9 @@ let package = Package(
         .target(
             name: "LiveChatUI",
             path: "Sources/LiveChatUI",
+            resources: [
+                .process("Resources")
+            ],
             swiftSettings: [
                 .swiftLanguageMode(.v5),
                 .enableUpcomingFeature("StrictConcurrency"),
