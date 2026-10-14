@@ -141,6 +141,28 @@ Failures are reported through `onError` as `LCUIChatAttachmentError` — oversiz
 files, disallowed types, and denied camera permission. `error.message(using:)` maps one to the
 matching string from your `LCUIChatTexts`.
 
+### Attachment previews
+
+`LCUIChatPreviewAttachment.sourceURL` is the URL used by the preview: images and videos can use a remote URL, while documents must use a local file URL that Quick Look can read. When the host stages a remote document locally, pass its remote address separately as `originalURL` so it remains available if native preview cannot handle the file.
+
+`LCUIChatAttachmentPreview` accepts an optional `onPreviewFailure` callback. When a remote URL is available, it is called with that URL if an image load or video item fails, or when Quick Look reports that a document is not previewable. If the attachment has only a local file URL and no `originalURL`, there is no remote URL to pass and the callback is not invoked. The host can use the callback to offer an alternate viewer, for example:
+
+```swift
+LCUIChatAttachmentPreview(
+    attachment: LCUIChatPreviewAttachment(
+        fileName: "invoice.pdf",
+        kind: .document,
+        sourceURL: stagedFileURL,
+        originalURL: downloadURL
+    ),
+    onPreviewFailure: { url in
+        UIApplication.shared.open(url)
+    }
+)
+```
+
+Quick Look does not report every failure that may occur after rendering starts, so the callback cannot recover from failures the framework does not expose. The host is responsible for staging remote documents and for deciding how to handle the callback (including whether to open the URL externally).
+
 ### Custom composer
 
 `LCUIChatScreenView` accepts any composer conforming to `LCUIChatComposing`:

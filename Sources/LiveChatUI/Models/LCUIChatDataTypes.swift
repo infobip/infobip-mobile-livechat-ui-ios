@@ -121,13 +121,31 @@ public struct LCUIChatPreviewAttachment: Identifiable, Equatable, Sendable {
     public let id: UUID
     public let fileName: String?
     public let kind: LCUIChatAttachmentKind
-    public let sourceURL: URL
+    public let sourceURL: URL /// A local file URL for documents (ie, for preview); image and video sources may be remote.
+    public let originalURL: URL?
 
-    public init(id: UUID = UUID(), fileName: String?, kind: LCUIChatAttachmentKind, sourceURL: URL) {
+    public init(
+        id: UUID = UUID(),
+        fileName: String?,
+        kind: LCUIChatAttachmentKind,
+        sourceURL: URL,
+        originalURL: URL? = nil
+    ) {
         self.id = id
         self.fileName = fileName
         self.kind = kind
         self.sourceURL = sourceURL
+        self.originalURL = originalURL
+    }
+
+    var quickLookURL: URL? {
+        guard kind == .document, sourceURL.isFileURL else { return nil }
+        return sourceURL
+    }
+
+    var previewFallbackURL: URL? {
+        if let originalURL { return originalURL }
+        return sourceURL.isFileURL ? nil : sourceURL
     }
 }
 
