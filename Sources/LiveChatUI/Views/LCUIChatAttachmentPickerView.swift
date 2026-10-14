@@ -106,7 +106,11 @@ public struct LCUIChatAttachmentPickerView: View {
     public var body: some View {
         let texts = attachmentTexts
         let icons = attachmentIcons
-        let style = AttachmentRow.Style(height: rowHeight, usesLiquidGlassChrome: usesLiquidGlassChrome)
+        let style = AttachmentRow.Style(
+            height: rowHeight,
+            usesLiquidGlassChrome: usesLiquidGlassChrome,
+            foregroundColor: colors.primary
+        )
 
         return VStack(spacing: usesLiquidGlassChrome ? Self.glassRowSpacing : 0) {
             if isCameraRowVisible {
@@ -342,6 +346,7 @@ private struct AttachmentRow: View {
     struct Style: Sendable {
         let height: CGFloat
         let usesLiquidGlassChrome: Bool
+        let foregroundColor: Color
     }
 
     let title: Text
@@ -360,11 +365,13 @@ private struct AttachmentRow: View {
     var body: some View {
         Label {
             title
+                .foregroundStyle(style.foregroundColor)
         } icon: {
             icon
                 .resizable()
                 .scaledToFit()
                 .frame(width: Self.iconSize, height: Self.iconSize)
+                .foregroundStyle(style.foregroundColor)
         }
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -480,4 +487,11 @@ struct LCUIChatCameraCaptureView: UIViewControllerRepresentable {
 #Preview("Documents only — no camera or gallery row") {
     LCUIChatAttachmentPickerView(onPick: { _ in })
         .lcuiChatSettings(.init(constraints: .init(allowedContentTypes: [.pdf])))
+}
+
+@available(iOS 16, *)
+#Preview("Dark attachment picker") {
+    LCUIChatAttachmentPickerView(onPick: { _ in })
+        .lcuiChatSettings(.init(theme: .init(currentColorMode: .dark)))
+        .preferredColorScheme(.dark)
 }
