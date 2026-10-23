@@ -7,11 +7,11 @@
 //
 
 import SwiftUI
+import UIKit
 
 public struct LCUIChatTheme: Equatable, Sendable {
-    public enum ColorMode: Hashable, Sendable {
-        case light
-        case dark
+    public enum ColorMode: String, Hashable, Sendable {
+        case light, dark, auto
     }
 
     public struct Colors: Equatable, Sendable {
@@ -46,6 +46,30 @@ public struct LCUIChatTheme: Equatable, Sendable {
             return Colors(primary: .white,
                           secondary: .white,
                           background: Color(lcHex: "141414"))
+        }
+        
+        
+        @MainActor
+        private static var systemInterfaceStyle: UIUserInterfaceStyle {
+            let windows = UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .first { $0.activationState == .foregroundActive }?
+                .windows
+
+            let keyWindow = windows?.first(where: \.isKeyWindow) ?? windows?.first
+
+            return (keyWindow?.traitCollection ?? UITraitCollection.current)
+                .userInterfaceStyle
+        }
+        
+        @MainActor
+        public static func adaptRuntimeColorMode(for style: LCUIChatTheme.ColorMode) -> LCUIChatTheme.ColorMode {
+            switch style {
+            case .light: return .light
+            case .dark: return .dark
+            case .auto: return systemInterfaceStyle == .dark ? .dark : .light
+            @unknown default: return systemInterfaceStyle == .dark ? .dark : .light
+            }
         }
     }
 

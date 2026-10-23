@@ -44,6 +44,8 @@ Pods/
 macos/
 .application-code
 
+AGENTS.md
+
 ### Sonar ###
 #Sonar generated dir
 /.sonar/
