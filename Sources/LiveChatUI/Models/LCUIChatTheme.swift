@@ -21,31 +21,33 @@ public struct LCUIChatTheme: Equatable, Sendable {
         public var sendButtonBackground: Color {
             return primary
         }
-        public var sendButtonTint: Color {
-            return background
-        }
+        public internal(set) var sendButtonTint: Color
 
         init(
             primary: Color,
             secondary: Color,
-            background: Color
+            background: Color,
+            sendButtonTint: Color
         ) {
             self.primary = primary
             self.secondary = secondary
             self.background = background
+            self.sendButtonTint = sendButtonTint
         }
 
         
         public static var light: Colors {
             return Colors(primary: Color(lcHex: "383533"),
                           secondary: Color(lcHex: "5C5B59"),
-                          background: Color(.systemBackground))
+                          background: Color(.systemBackground),
+                          sendButtonTint: .white)
         }
 
         public static var dark: Colors {
             return Colors(primary: .white,
                           secondary: .white,
-                          background: Color(lcHex: "141414"))
+                          background: Color(lcHex: "141414"),
+                          sendButtonTint: Color(lcHex: "141414"))
         }
         
         
@@ -107,17 +109,36 @@ public struct LCUIChatTheme: Equatable, Sendable {
 
     private var lightColors: Colors
     private var darkColors: Colors
-    public var currentColorMode: ColorMode = .light
+    public var currentColorMode: ColorMode = .light {
+        didSet {
+            // Semantic primary colors may resolve differently after an appearance change.
+            refreshSendButtonTints()
+        }
+    }
     public var lightPrimaryColor: Color {
         didSet {
             lightColors.primary = lightPrimaryColor
+            lightColors.sendButtonTint = Color.white.sendTintEnsuringContrast(
+                against: lightPrimaryColor, over: .white)
         }
     }
     public var darkPrimaryColor: Color {
         didSet {
             darkColors.primary = darkPrimaryColor
+            darkColors.sendButtonTint = darkColors.background.sendTintEnsuringContrast(
+                against: darkPrimaryColor, over: darkColors.background)
         }
     }
+
+    private mutating func refreshSendButtonTints() {
+        lightColors.sendButtonTint = Color.white.sendTintEnsuringContrast(
+            against: lightPrimaryColor, over: .white)
+        darkColors.sendButtonTint = darkColors.background.sendTintEnsuringContrast(
+            against: darkPrimaryColor, over: darkColors.background)
+    }
+
+    public var lightSendTintColor: Color { lightColors.sendButtonTint }
+    public var darkSendTintColor: Color { darkColors.sendButtonTint }
     
     public var colors: Colors {
         return currentColorMode == .dark ? darkColors : lightColors
@@ -145,12 +166,18 @@ public struct LCUIChatTheme: Equatable, Sendable {
         self.currentColorMode = currentColorMode
         self.layout = layout
         self.banner = banner
+        refreshSendButtonTints()
     }
 
     public var primaryColorDisabled: Color { colors.primary.opacity(Self.disabledAlpha) }
     public var secondaryColorDisabled: Color { colors.secondary.opacity(Self.disabledAlpha) }
 
-    public var sendButtonTintColorDisabled: Color { colors.sendButtonTint.opacity(Self.disabledAlphaDarker) }
+    internal var activeSendButtonTintColor: Color {
+        currentColorMode == .dark ? darkSendTintColor : lightSendTintColor
+    }
+    public var sendButtonTintColorDisabled: Color {
+        activeSendButtonTintColor.opacity(Self.disabledAlphaDarker)
+    }
     public var sendButtonBackgroundColorDisabled: Color { colors.sendButtonBackground.opacity(Self.disabledAlphaDarker) }
 
     public static let `default` = LCUIChatTheme()

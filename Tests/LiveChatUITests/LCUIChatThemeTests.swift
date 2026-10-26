@@ -21,6 +21,64 @@ final class LCUIChatThemeTests: XCTestCase {
         XCTAssertEqual(theme.colors.primary, .green)
     }
 
+    func testLightSendTintKeepsWhiteAtThresholdAndFallsBackToBlack() {
+        var theme = LCUIChatTheme(lightPrimaryColor: Color(lcHex: "757575"))
+        XCTAssertEqual(theme.lightSendTintColor, .white)
+        XCTAssertEqual(theme.colors.sendButtonTint, .white)
+
+        theme.lightPrimaryColor = Color(lcHex: "777777")
+        XCTAssertEqual(theme.lightSendTintColor, .black)
+        XCTAssertEqual(theme.colors.sendButtonTint, .black)
+    }
+
+    func testDarkSendTintTracksPrimaryColor() {
+        var theme = LCUIChatTheme(darkPrimaryColor: Color(lcHex: "555555"), currentColorMode: .dark)
+        XCTAssertEqual(theme.darkSendTintColor, .white)
+        XCTAssertEqual(theme.colors.sendButtonTint, .white)
+
+        theme.darkPrimaryColor = .white
+        XCTAssertEqual(theme.darkSendTintColor, Color(lcHex: "141414"))
+        XCTAssertEqual(theme.colors.sendButtonTint, Color(lcHex: "141414"))
+    }
+
+    func testActiveAndDisabledSendTintFollowColorMode() {
+        var theme = LCUIChatTheme(
+            lightPrimaryColor: Color(lcHex: "777777"),
+            darkPrimaryColor: Color(lcHex: "555555")
+        )
+        XCTAssertEqual(theme.activeSendButtonTintColor, .black)
+        XCTAssertEqual(theme.sendButtonTintColorDisabled, Color.black.opacity(0.75))
+
+        theme.currentColorMode = .dark
+        XCTAssertEqual(theme.activeSendButtonTintColor, .white)
+        XCTAssertEqual(theme.sendButtonTintColorDisabled, Color.white.opacity(0.75))
+    }
+
+    func testSendTintUpdatesWhenDynamicPrimaryChangesAppearance() {
+        var theme = LCUIChatTheme(darkPrimaryColor: Color(uiColor: .label))
+
+        UITraitCollection(userInterfaceStyle: .light).performAsCurrent {
+            XCTAssertEqual(theme.darkSendTintColor, .white)
+        }
+        UITraitCollection(userInterfaceStyle: .dark).performAsCurrent {
+            theme.currentColorMode = .dark
+            XCTAssertEqual(theme.darkSendTintColor, Color(lcHex: "141414"))
+            XCTAssertEqual(theme.colors.sendButtonTint, Color(lcHex: "141414"))
+        }
+    }
+
+    func testNonRGBPrimaryColorDoesNotCrashTintSelection() {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 1, height: 1)).image { context in
+            UIColor.red.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 1, height: 1))
+        }
+        let pattern = Color(uiColor: UIColor(patternImage: image))
+        let theme = LCUIChatTheme(lightPrimaryColor: pattern, darkPrimaryColor: pattern)
+
+        XCTAssertEqual(theme.lightSendTintColor, .white)
+        XCTAssertEqual(theme.darkSendTintColor, Color(lcHex: "141414"))
+    }
+
     func testMutatingDarkPrimaryColorAfterInitOnlyAffectsDarkColors() {
         var theme = LCUIChatTheme(lightPrimaryColor: .red, darkPrimaryColor: .white, currentColorMode: .light)
         let lightPrimaryBefore = theme.colors.primary

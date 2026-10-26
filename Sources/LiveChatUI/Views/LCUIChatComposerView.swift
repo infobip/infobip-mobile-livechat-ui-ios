@@ -79,6 +79,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
             VStack(alignment: .leading, spacing: 6) {
                 TextField(settings.texts.sendAMessage, text: text, axis: .vertical)
                     .lineLimit(1...4) // After 4 lines, text will just start scrolling
+                    .multilineTextAlignment(.leading)
                     .focused($isFocused)
                     .disabled(!isEnabled)
                     .foregroundStyle(colors.secondary)
@@ -110,8 +111,9 @@ public struct LCUIChatComposerView: LCUIChatComposing {
                         icons.sendButton
                             .resizable()
                             .scaledToFit()
+                            .flipsForRightToLeftLayoutDirection(true)
                             .frame(width: buttonIconSize, height: buttonIconSize)
-                            .foregroundStyle(isSendEnabled ? colors.sendButtonTint : theme.sendButtonTintColorDisabled)
+                            .foregroundStyle(isSendEnabled ? theme.activeSendButtonTintColor : theme.sendButtonTintColorDisabled)
                             .frame(width: buttonSize, height: buttonSize)
                             .background(sendButtonBackground)
                             .clipShape(Circle())
@@ -154,7 +156,7 @@ public struct LCUIChatComposerView: LCUIChatComposing {
                 .fill(.clear)
                 .glassEffect(
                     theme.currentColorMode == .dark
-                        ? .regular.tint(colors.background.opacity(0.95))
+                        ? .regular.tint(colors.background.opacity(0.85))
                         : .regular,
                     in: RoundedRectangle(cornerRadius: 24, style: .continuous)
                 )
