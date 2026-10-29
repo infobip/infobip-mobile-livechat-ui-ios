@@ -143,6 +143,10 @@ public struct LCUIChatTheme: Equatable, Sendable {
     public var colors: Colors {
         return currentColorMode == .dark ? darkColors : lightColors
     }
+    
+    public var secondaryColor: Color {
+        return currentColorMode == .dark ? darkColors.secondary : lightColors.secondary
+    }
 
     public private(set) var layout: Layout
     public private(set) var banner: Banner
