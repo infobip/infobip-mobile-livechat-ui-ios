@@ -22,7 +22,9 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
     private let bannerMessage: Text?
     private let onBannerTapped: () -> Void
     private let text: Binding<String>?
+    private let attachment: Binding<LCUIChatAttachment?>?
     private let onSend: (String) -> Void
+    private let onSendAttachment: ((String, LCUIChatAttachment) -> Void)?
     private let onAttachmentTapped: () -> Void
     private let onTextChange: (String) -> Void
     private let embedsNavigationStack: Bool
@@ -38,7 +40,9 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
         bannerMessage: Text? = nil,
         onBannerTapped: @escaping () -> Void = {},
         text: Binding<String>? = nil,
+        attachment: Binding<LCUIChatAttachment?>? = nil,
         onSend: @escaping (String) -> Void,
+        onSendAttachment: ((String, LCUIChatAttachment) -> Void)? = nil,
         onAttachmentTapped: @escaping () -> Void = {},
         onTextChange: @escaping (String) -> Void = { _ in },
         embedsNavigationStack: Bool = true,
@@ -53,7 +57,9 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
         self.bannerMessage = bannerMessage
         self.onBannerTapped = onBannerTapped
         self.text = text
+        self.attachment = attachment
         self.onSend = onSend
+        self.onSendAttachment = onSendAttachment
         self.onAttachmentTapped = onAttachmentTapped
         self.onTextChange = onTextChange
         self.embedsNavigationStack = embedsNavigationStack
@@ -89,7 +95,7 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
             .toolbar {
                 if showsCustomBackButton {
                     ToolbarItem(placement: .navigationBarLeading) {
-                        Button(action: onBackButtonTapped) { settings.icons.navigation.back }
+                        Button(action: onBackButtonTapped) { settings.icons.back }
                             .accessibilityLabel(settings.texts.back)
                     }
                 }
@@ -135,7 +141,9 @@ public struct LCUIChatScreenView<WebContent: View, Composer: LCUIChatComposing>:
                     configuration: LCUIChatComposerConfiguration(
                         isEnabled: isComposerEnabled,
                         text: text,
+                        attachment: attachment,
                         onSend: onSend,
+                        onSendAttachment: onSendAttachment,
                         onAttachmentTapped: onAttachmentTapped,
                         onTextChange: onTextChange
                     )
@@ -169,7 +177,9 @@ public extension LCUIChatScreenView where Composer == LCUIChatComposerView {
         bannerMessage: Text? = nil,
         onBannerTapped: @escaping () -> Void = {},
         text: Binding<String>? = nil,
+        attachment: Binding<LCUIChatAttachment?>? = nil,
         onSend: @escaping (String) -> Void,
+        onSendAttachment: ((String, LCUIChatAttachment) -> Void)? = nil,
         onAttachmentTapped: @escaping () -> Void = {},
         onTextChange: @escaping (String) -> Void = { _ in },
         embedsNavigationStack: Bool = true,
@@ -185,7 +195,9 @@ public extension LCUIChatScreenView where Composer == LCUIChatComposerView {
             bannerMessage: bannerMessage,
             onBannerTapped: onBannerTapped,
             text: text,
+            attachment: attachment,
             onSend: onSend,
+            onSendAttachment: onSendAttachment,
             onAttachmentTapped: onAttachmentTapped,
             onTextChange: onTextChange,
             embedsNavigationStack: embedsNavigationStack,

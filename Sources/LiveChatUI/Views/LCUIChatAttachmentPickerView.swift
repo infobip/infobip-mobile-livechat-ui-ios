@@ -33,7 +33,6 @@ public struct LCUIChatAttachmentPickerView: View {
     private var layout: LCUIChatTheme.Layout { settings.theme.layout }
     private var colors: LCUIChatTheme.Colors { settings.theme.colors }
     private var constraints: LCUIChatConstraints { settings.constraints }
-    private var attachmentIcons: LCUIChatIcons.Attachments { settings.icons.attachments }
     private var attachmentTexts: LCUIChatTexts.Attachments { settings.texts.attachments }
 
     @ScaledMetric private var rowHeight: CGFloat = 52
@@ -105,7 +104,7 @@ public struct LCUIChatAttachmentPickerView: View {
 
     public var body: some View {
         let texts = attachmentTexts
-        let icons = attachmentIcons
+        let icons = settings.icons
         let style = AttachmentRow.Style(
             height: rowHeight,
             usesLiquidGlassChrome: usesLiquidGlassChrome,

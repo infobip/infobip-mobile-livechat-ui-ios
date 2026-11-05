@@ -19,6 +19,7 @@ public struct LCUIChatTexts: Sendable {
         public private(set) var goToSettings: Text
         public private(set) var share: Text
         public private(set) var attachments: Text
+        public private(set) var removeAttachment: Text
 
         public init(
             takePhotoOrVideo: Text = Text("Take Photo or Video"),
@@ -29,7 +30,8 @@ public struct LCUIChatTexts: Sendable {
             toGivePermission: Text = Text("To give permissions go to Settings"),
             goToSettings: Text = Text("Settings"),
             share: Text = Text("Share"),
-            attachments: Text = Text("Attachments")
+            attachments: Text = Text("Attachments"),
+            removeAttachment: Text = Text("Remove attachment")
         ) {
             self.takePhotoOrVideo = takePhotoOrVideo
             self.photoLibrary = photoLibrary
@@ -40,6 +42,7 @@ public struct LCUIChatTexts: Sendable {
             self.goToSettings = goToSettings
             self.share = share
             self.attachments = attachments
+            self.removeAttachment = removeAttachment
         }
     }
 

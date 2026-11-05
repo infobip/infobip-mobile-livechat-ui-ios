@@ -21,7 +21,9 @@ public struct LCUIChatComposerView: LCUIChatComposing {
 
     private let isEnabled: Bool
     private let externalText: Binding<String>?
+    private let attachment: Binding<LCUIChatAttachment?>?
     private let onSend: (String) -> Void
+    private let onSendAttachment: ((String, LCUIChatAttachment) -> Void)?
     private let onAttachmentTapped: () -> Void
     private let onTextChange: (String) -> Void
     private var maximumCharacterCount: UInt {
@@ -45,13 +47,17 @@ public struct LCUIChatComposerView: LCUIChatComposing {
     public init(
         isEnabled: Bool = true,
         text: Binding<String>? = nil,
+        attachment: Binding<LCUIChatAttachment?>? = nil,
         onSend: @escaping (String) -> Void,
+        onSendAttachment: ((String, LCUIChatAttachment) -> Void)? = nil,
         onAttachmentTapped: @escaping () -> Void = {},
         onTextChange: @escaping (String) -> Void = { _ in }
     ) {
         self.isEnabled = isEnabled
         self.externalText = text
+        self.attachment = attachment
         self.onSend = onSend
+        self.onSendAttachment = onSendAttachment
         self.onAttachmentTapped = onAttachmentTapped
         self.onTextChange = onTextChange
     }
@@ -60,16 +66,25 @@ public struct LCUIChatComposerView: LCUIChatComposing {
         self.init(
             isEnabled: configuration.isEnabled,
             text: configuration.text,
+            attachment: configuration.attachment,
             onSend: configuration.onSend,
+            onSendAttachment: configuration.onSendAttachment,
             onAttachmentTapped: configuration.onAttachmentTapped,
             onTextChange: configuration.onTextChange
         )
     }
 
+    private var selectedAttachment: LCUIChatAttachment? { attachment?.wrappedValue }
+    private var canPickAttachment: Bool { isEnabled && selectedAttachment == nil }
+
     private var isSendEnabled: Bool {
-        isEnabled
-            && !text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !isOverLimit
+        LCUIChatComposerSubmission.canSend(
+            text: text.wrappedValue,
+            attachment: selectedAttachment,
+            isEnabled: isEnabled,
+            maximumCharacterCount: maximumCharacterCount,
+            hasAttachmentHandler: onSendAttachment != nil
+        )
     }
     private var characterCount: UInt { UInt(text.wrappedValue.count) }
     private var isOverLimit: Bool { characterCount > maximumCharacterCount }
@@ -77,6 +92,15 @@ public struct LCUIChatComposerView: LCUIChatComposing {
     public var body: some View {
         ZStack(alignment: .topTrailing) {
             VStack(alignment: .leading, spacing: 6) {
+                if let selectedAttachment {
+                    LCUIChatComposerAttachmentThumbnail(attachment: selectedAttachment) {
+                        attachment?.wrappedValue = nil
+                        selectedAttachment.discard()
+                    }
+                    .id(selectedAttachment.id)
+                    .padding(.bottom, 4)
+                }
+
                 TextField(settings.texts.sendAMessage, text: text, axis: .vertical)
                     .lineLimit(1...4) // After 4 lines, text will just start scrolling
                     .multilineTextAlignment(.leading)
@@ -92,16 +116,16 @@ public struct LCUIChatComposerView: LCUIChatComposing {
                 HStack(alignment: .bottom, spacing: 8) {
                     if constraints.isAttachmentUploadEnabled {
                         Button(action: onAttachmentTapped) {
-                            icons.attachments.addButton
+                            icons.addButton
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: buttonIconSize, height: buttonIconSize)
-                                .foregroundStyle(isEnabled ? colors.secondary : theme.secondaryColorDisabled)
+                                .foregroundStyle(canPickAttachment ? colors.secondary : theme.secondaryColorDisabled)
                                 .frame(width: buttonSize, height: buttonSize)
                                 .background(Circle().fill(.clear))
                                 .clipShape(Circle())
                         }
-                        .disabled(!isEnabled)
+                        .disabled(!canPickAttachment)
                         .accessibilityLabel(attTexts.attachments)
                     }
 
@@ -183,8 +207,45 @@ public struct LCUIChatComposerView: LCUIChatComposing {
 
     private func submit() {
         guard isSendEnabled else { return }
-        onSend(text.wrappedValue)
-        text.wrappedValue = ""
+        LCUIChatComposerSubmission.perform(
+            text: text,
+            attachment: attachment,
+            onSend: onSend,
+            onSendAttachment: onSendAttachment
+        )
+    }
+}
+
+@available(iOS 16, *)
+enum LCUIChatComposerSubmission {
+    static func canSend(
+        text: String,
+        attachment: LCUIChatAttachment?,
+        isEnabled: Bool,
+        maximumCharacterCount: UInt,
+        hasAttachmentHandler: Bool
+    ) -> Bool {
+        guard isEnabled, UInt(text.count) <= maximumCharacterCount else { return false }
+        if attachment != nil { return hasAttachmentHandler }
+        return !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    static func perform(
+        text: Binding<String>,
+        attachment: Binding<LCUIChatAttachment?>?,
+        onSend: (String) -> Void,
+        onSendAttachment: ((String, LCUIChatAttachment) -> Void)?
+    ) {
+        let message = text.wrappedValue
+        if let picked = attachment?.wrappedValue {
+            guard let onSendAttachment else { return }
+            attachment?.wrappedValue = nil
+            text.wrappedValue = ""
+            onSendAttachment(message, picked)
+        } else {
+            onSend(message)
+            text.wrappedValue = ""
+        }
     }
 }
 

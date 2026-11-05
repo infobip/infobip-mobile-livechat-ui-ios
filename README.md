@@ -59,6 +59,7 @@ import LiveChatUI
 @available(iOS 16, *)
 struct ChatScreen: View {
     @StateObject private var model: ChatModel
+    @State private var pendingAttachment: LCUIChatAttachment?
 
     var body: some View {
         LCUIChatScreenView(
@@ -66,7 +67,11 @@ struct ChatScreen: View {
             error: model.fatalError,
             bannerMessage: model.bannerMessage,
             onBannerTapped: model.retry,
+            attachment: $pendingAttachment,
             onSend: model.send,
+            onSendAttachment: { caption, attachment in
+                model.upload(attachment, caption: caption)
+            },
             onAttachmentTapped: { model.isPickingAttachment = true }
         ) {
             LCUIChatWebContentHost(webView: model.webView)
@@ -74,7 +79,10 @@ struct ChatScreen: View {
         .lcuiChatSettings(model.settings)
         .sheet(isPresented: $model.isPickingAttachment) {
             LCUIChatAttachmentPickerView(
-                onPick: model.upload,
+                onPick: { attachment in
+                    pendingAttachment?.discard()
+                    pendingAttachment = attachment
+                },
                 onError: model.present
             )
         }
@@ -110,8 +118,10 @@ Color customization is intentionally narrow: `lightPrimaryColor`/`darkPrimaryCol
 accent color used per mode (navigation, send button, etc). `secondary` and `background` come from
 the fixed `LCUIChatTheme.Colors.light`/`.dark` palettes and aren't independently brandable, and
 `sendButtonBackground`/`sendButtonTint` are derived from `primary`/`background` rather than
-separate settings. `LCUIChatTheme.Layout(prefersLiquidGlass:)` (default `true`, ignored below
-iOS 26) is the other themeable knob.
+separate settings. `LCUIChatTheme.AttachmentThumbnail` configures the thumbnail's remove-button
+and video-overlay colors and file-name font. Its remove and placeholder icons can be supplied
+through `LCUIChatIcons`. `LCUIChatTheme.Layout(prefersLiquidGlass:)` controls the composer chrome
+(default `true`, ignored below iOS 26).
 
 `currentColorMode: LCUIChatTheme.ColorMode` (`.light`/`.dark`) selects which palette is active, but
 it is **not** tied to the system appearance automatically — track appearance yourself (e.g. via
@@ -136,6 +146,13 @@ does not hold the bytes in memory, so a large video capture costs disk rather th
 **The host owns the file's lifetime.** Call `attachment.discard()` once you have finished uploading
 it, and `LCUIChatAttachment.discardAll()` when tearing the chat down, or staged files accumulate in
 the app container until the system next clears `tmp`.
+
+Pass a pending attachment through `LCUIChatScreenView.attachment`. Picking only stages it in the
+composer; the upload starts when Send calls `onSendAttachment(caption, attachment)`. The caption may
+be empty. The composer clears the draft and pending binding after Send, leaving the staged file
+available to the host until the upload finishes. Removing the thumbnail discards that file. When
+replacing a pending attachment, discard the old one as shown above. Supply both `attachment` and
+`onSendAttachment` so the attachment can be sent.
 
 Failures are reported through `onError` as `LCUIChatAttachmentError` — oversized files, unreadable
 files, disallowed types, and denied camera permission. `error.message(using:)` maps one to the

@@ -107,6 +107,28 @@ public struct LCUIChatTheme: Equatable, Sendable {
         }
     }
 
+    public struct AttachmentThumbnail: Equatable, Sendable {
+        public var removeButtonBackgroundColor: Color
+        public var removeButtonForegroundColor: Color
+        public var videoPlayColor: Color
+        public var videoPlayShadowColor: Color
+        public var fileNameFont: Font
+
+        public init(
+            removeButtonBackgroundColor: Color = .gray,
+            removeButtonForegroundColor: Color = .white,
+            videoPlayColor: Color = .white,
+            videoPlayShadowColor: Color = .black.opacity(0.35),
+            fileNameFont: Font = .caption2
+        ) {
+            self.removeButtonBackgroundColor = removeButtonBackgroundColor
+            self.removeButtonForegroundColor = removeButtonForegroundColor
+            self.videoPlayColor = videoPlayColor
+            self.videoPlayShadowColor = videoPlayShadowColor
+            self.fileNameFont = fileNameFont
+        }
+    }
+
     private var lightColors: Colors
     private var darkColors: Colors
     public var currentColorMode: ColorMode = .light {
@@ -150,6 +172,7 @@ public struct LCUIChatTheme: Equatable, Sendable {
 
     public private(set) var layout: Layout
     public private(set) var banner: Banner
+    public private(set) var attachmentThumbnail: AttachmentThumbnail
 
     private static let disabledAlpha: Double = 0.35
     private static let disabledAlphaDarker: Double = 0.75
@@ -159,7 +182,8 @@ public struct LCUIChatTheme: Equatable, Sendable {
         darkPrimaryColor: Color = .white,
         currentColorMode: ColorMode = .light,
         layout: Layout = Layout(),
-        banner: Banner = Banner()
+        banner: Banner = Banner(),
+        attachmentThumbnail: AttachmentThumbnail = AttachmentThumbnail()
     ) {
         self.lightColors = Colors.light
         self.darkColors = Colors.dark
@@ -170,6 +194,7 @@ public struct LCUIChatTheme: Equatable, Sendable {
         self.currentColorMode = currentColorMode
         self.layout = layout
         self.banner = banner
+        self.attachmentThumbnail = attachmentThumbnail
         refreshSendButtonTints()
     }
 

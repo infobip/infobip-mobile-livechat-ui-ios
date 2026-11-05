@@ -66,7 +66,7 @@ public struct LCUIChatAttachmentPreview: View {
                         Button {
                             onShare(attachment.sourceURL)
                         } label: {
-                            settings.icons.attachments.sharing
+                            settings.icons.sharing
                         }
                         .tint(colors.primary)
                         .accessibilityLabel(attTexts.share)
@@ -75,7 +75,7 @@ public struct LCUIChatAttachmentPreview: View {
                         Button {
                             dismiss()
                         } label: {
-                            settings.icons.navigation.closing
+                            settings.icons.closing
                                 .imageScale(.medium)
                                 .font(.headline)
                         }
