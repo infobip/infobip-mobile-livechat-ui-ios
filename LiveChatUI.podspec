@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'LiveChatUI'
-  s.version          = '0.1.12'
+  s.version          = '0.1.13'
   s.summary          = 'UI components for Infobip Live Chat.'
   s.description      = <<-DESC
 LiveChatUI provides SwiftUI-based UI components for building Infobip Live Chat
